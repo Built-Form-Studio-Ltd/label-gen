@@ -1,0 +1,7 @@
+{
+  "routes": [
+    { "src": "/favicon.ico", "status": 204 },
+    { "src": "/404.html", "status": 204 },
+    { "src": "/robots.txt", "status": 204 }
+  ]
+}
