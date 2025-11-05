@@ -55,7 +55,7 @@ export default async function handler(req, res) {
       // Description (multi-line centered)
       doc.font("Helvetica").fontSize(5);
       doc.text(desc, 5, cursorY, {
-        width: BarcodeW,
+        width: barcodeW,
         align: "center",
         lineGap: 1,
       });
@@ -64,7 +64,7 @@ export default async function handler(req, res) {
       const bottomY = labelH - 7;
       doc.font("Helvetica-Bold").fontSize(6);
       doc.text("NEW", 6, bottomY, { align: "left" });
-      doc.text(country, -1, bottomY, { width: BarcodeW , align: "right" });
+      doc.text(country, -1, bottomY, { width: barcodeW , align: "right" });
 
       doc.restore();
     }
