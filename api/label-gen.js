@@ -34,7 +34,7 @@ export default async function handler(req, res) {
 
       // --- Barcode (full width, slightly taller) ---
       const barcodeW = labelW * 0.90;
-      const barcodeH = labelH * 0.40;
+      const barcodeH = labelH * 0.42;
       const barcodeX = (labelW - barcodeW) / 2;
       const barcodeY = 6;
       doc.image(barcode, barcodeX, barcodeY, { width: barcodeW, height: barcodeH });
@@ -48,7 +48,7 @@ export default async function handler(req, res) {
       cursorY += 11;
 
       // SKU (bold)
-      doc.font("Helvetica-Bold").fontSize(8);
+      doc.font("Helvetica-Bold").fontSize(7);
       doc.text(sku, 0, cursorY, { width: labelW, align: "center" });
       cursorY += 11;
 
@@ -64,7 +64,7 @@ export default async function handler(req, res) {
       const bottomY = labelH - 7;
       doc.font("Helvetica-Bold").fontSize(6);
       doc.text("NEW", 6, bottomY, { align: "left" });
-      doc.text(country, -1, bottomY, { width: barcodeW , align: "right" });
+      doc.text(country, 1, bottomY, { width: barcodeW , align: "right" });
 
       doc.restore();
     }
