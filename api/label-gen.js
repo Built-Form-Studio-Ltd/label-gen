@@ -53,18 +53,18 @@ export default async function handler(req, res) {
       cursorY += 11;
 
       // Description (multi-line centered)
-      doc.font("Helvetica").fontSize(6);
+      doc.font("Helvetica").fontSize(5);
       doc.text(desc, 5, cursorY, {
         width: labelW - 10,
         align: "center",
-        lineGap: 2,
+        lineGap: 1,
       });
 
       // --- Bottom labels ---
-      const bottomY = labelH - 9;
+      const bottomY = labelH - 7;
       doc.font("Helvetica-Bold").fontSize(6);
       doc.text("NEW", 6, bottomY, { align: "left" });
-      doc.text(country, -1, bottomY, { width: labelW - 12, align: "right" });
+      doc.text(country, -1, bottomY, { width: labelW , align: "right" });
 
       doc.restore();
     }
