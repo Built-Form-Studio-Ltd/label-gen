@@ -33,8 +33,8 @@ export default async function handler(req, res) {
       doc.translate(x, y);
 
       // --- Barcode (full width, slightly taller) ---
-      const barcodeW = labelW * 0.95;
-      const barcodeH = labelH * 0.34;
+      const barcodeW = labelW * 0.92;
+      const barcodeH = labelH * 0.38;
       const barcodeX = (labelW - barcodeW) / 2;
       const barcodeY = 6;
       doc.image(barcode, barcodeX, barcodeY, { width: barcodeW, height: barcodeH });
@@ -64,7 +64,7 @@ export default async function handler(req, res) {
       const bottomY = labelH - 9;
       doc.font("Helvetica-Bold").fontSize(6);
       doc.text("NEW", 6, bottomY, { align: "left" });
-      doc.text(country, -6, bottomY, { width: labelW - 12, align: "right" });
+      doc.text(country, -1, bottomY, { width: labelW - 12, align: "right" });
 
       doc.restore();
     }
