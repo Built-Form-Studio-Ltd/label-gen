@@ -1,17 +1,8 @@
 {
   "name": "label-gen",
   "version": "1.0.0",
-  "license": "MIT",
-  "private": true,
-  "repository": "https://github.com/vercel/examples.git",
   "type": "module",
   "dependencies": {
-    "pdfkit": "^0.13.0",
-    "bwip-js": "^3.1.4"
-  },
-  "devDependencies": {
-    "@types/node": "^17.0.42",
-    "@vercel/node": "^2.9.6",
-    "typescript": "^4.7.3"
+    "pdf-lib": "^1.17.1"
   }
 }
