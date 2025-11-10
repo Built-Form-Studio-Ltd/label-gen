@@ -1,0 +1,4 @@
+name = "label-gen"
+main = "functions/api/label-gen.js"
+compatibility_date = "2025-11-10"
+compatibility_flags = ["nodejs_compat"]
