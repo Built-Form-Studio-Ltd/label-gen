@@ -1,6 +1,6 @@
-globalThis.__dirname = "/";
-import PDFDocument from "pdfkit";
-import bwipjs from "bwip-js";
+// We are now explicitly importing the browser builds, which don't use `fs`
+import PDFDocument from "pdfkit/js/pdfkit.browser.es5.js";
+import bwipjs from "bwip-js/browser";
 
 /**
  * Helper to concat Uint8Arrays (Buffer.concat)
