@@ -1,3 +1,4 @@
+globalThis.__dirname = "/";
 import PDFDocument from "pdfkit";
 import bwipjs from "bwip-js";
 
