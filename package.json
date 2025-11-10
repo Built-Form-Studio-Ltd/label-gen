@@ -1,0 +1,9 @@
+{
+  "name": "label-gen-functions",
+  "version": "1.0.0",
+  "private": true,
+  "dependencies": {
+    "pdfkit": "^0.13.0",
+    "bwip-js": "^4.1.0"
+  }
+}

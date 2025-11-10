@@ -1,8 +1,0 @@
-{
-  "name": "pages-functions",
-  "version": "1.0.0",
-  "type": "module",
-  "dependencies": {
-    "pdf-lib": "^1.17.1"
-  }
-}
