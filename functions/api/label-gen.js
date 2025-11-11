@@ -214,37 +214,18 @@ export async function onRequest(context) {
     });
   }
 
+  // --- NEW + COUNTRY ---
+  const bottomY = y + 5;
+  page.drawText("NEW", { x: x + 5, y: bottomY, size: 4, font: helvB });
+  const countryW = helvB.widthOfTextAtSize(country, 4);
+  page.drawText(country, {
+    x: x + barcodeW - countryW - 5,
+    y: bottomY,
+    size: 4,
+    font: helvB
+  });
+}
 
-
-  // If nothing drawn (edge cases), render one safe centered line
-  // if (!descLines.length) {
-  //   const fallback = desc.slice(0, 40);
-  //   const fallbackWidth = helv.widthOfTextAtSize(fallback, minFont);
-  //   const centeredX = descX + (barcodeW - fallbackWidth) / 2;
-  //   page.drawText(fallback, {
-  //     x: centeredX,
-  //     y: safeBottom + 10,
-  //     size: minFont,
-  //     font: helv,
-  //   });
-  // }
-
-
-
-
-
-        // --- NEW + COUNTRY ---
-        const bottomY = y + 5;
-        page.drawText("NEW", { x: x + 5, y: bottomY, size: 4, font: helvB });
-        const countryW = helvB.widthOfTextAtSize(country, 4);
-        page.drawText(country, {
-          x: x + barcodeW - countryW - 5,
-          y: bottomY,
-          size: 4,
-          font: helvB
-        });
-      }
-    }
 
     const bytes = await pdf.save();
     return new Response(bytes, {
