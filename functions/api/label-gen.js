@@ -213,7 +213,7 @@ export async function onRequest(context) {
       font: helv,
     });
   }
-}
+
 
 
   // If nothing drawn (edge cases), render one safe centered line
@@ -228,7 +228,7 @@ export async function onRequest(context) {
   //     font: helv,
   //   });
   // }
-}
+
 
 
 
