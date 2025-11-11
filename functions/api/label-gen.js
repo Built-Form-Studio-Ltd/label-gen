@@ -35,108 +35,108 @@ const CODE128_PATTERNS = [
   [1,1,1,2,2,2] // STOP (106) special will be handled with 13-module terminator drawn below
 ];
 
-// Encodes text in Code 128 set B. Returns array of symbol indices.
 function encodeCode128B(text) {
-  // StartB = 104
   const codes = [104];
   for (const ch of text) {
     const code = ch.charCodeAt(0);
-    if (code < 32 || code > 126) {
-      throw new Error(`Unsupported char '${ch}' for Code128-B`);
-    }
+    if (code < 32 || code > 126) throw new Error(`Unsupported char ${ch}`);
     codes.push(code - 32);
   }
-  // checksum: (start + sum(code * pos)) % 103
   let checksum = codes[0];
   for (let i = 1; i < codes.length; i++) checksum += codes[i] * i;
-  checksum = checksum % 103;
-  codes.push(checksum);
-  // stop = 106
-  codes.push(106);
+  checksum %= 103;
+  codes.push(checksum, 106);
   return codes;
 }
 
-// Draws the encoded sequence at (x,y) with given module width and bar height.
-function drawCode128OnPage(page, x, y, text, moduleW, barH, color = rgb(0,0,0)) {
+function drawCode128(page, x, y, text, moduleW, barH, color = rgb(0, 0, 0)) {
   const codes = encodeCode128B(text);
   let cursor = x;
-
-  for (let i = 0; i < codes.length; i++) {
-    const sym = codes[i];
-    if (sym === 106) {
-      // STOP pattern: 2-3-3-1-1-1-2 (13 modules: 4 bars & 3 spaces; last 2 modules are bars)
-      const stop = [2,3,3,1,1,1,2];
-      let isBar = true;
+  for (const code of codes) {
+    if (code === 106) { const stop = [2,3,3,1,1,1,2];
+      let bar = true;
       for (const w of stop) {
         const width = w * moduleW;
-        if (isBar) {
-          page.drawRectangle({ x: cursor, y, width, height: barH, color });
-        }
-        cursor += width;
-        isBar = !isBar;
-      }
-      break;
+        if (bar) page.drawRectangle({ x: cursor, y, width, height: barH, color });
+        cursor += width; bar = !bar;
+      } break;
     }
-    const patt = CODE128_PATTERNS[sym];
-    let isBar = true;
+    const patt = CODE128_PATTERNS[code]; let bar = true;
     for (const w of patt) {
       const width = w * moduleW;
-      if (isBar) {
-        page.drawRectangle({ x: cursor, y, width, height: barH, color });
-      }
-      cursor += width;
-      isBar = !isBar;
+      if (bar) page.drawRectangle({ x: cursor, y, width, height: barH, color });
+      cursor += width; bar = !bar;
     }
   }
-  // Optional quiet zone (10 modules recommended) – already implicit if you pad before/after.
-  return cursor - x;
 }
 
+/* ---------- Cloudflare Function ---------- */
 export async function onRequestGet(context) {
   try {
     const { request } = context;
     const { searchParams } = new URL(request.url);
-
     const fnsku  = searchParams.get("fnsku")  || "X000000000";
     const sku    = searchParams.get("sku")    || "SKU123";
     const desc   = searchParams.get("desc")   || "Sample Product";
     const country= searchParams.get("country")|| "UK";
 
-    // Build PDF
     const pdf = await PDFDocument.create();
     const page = pdf.addPage([595.28, 841.89]); // A4
-    const helv = await pdf.embedFont(StandardFonts.Helvetica);
-    const helvB= await pdf.embedFont(StandardFonts.HelveticaBold);
+    const helv  = await pdf.embedFont(StandardFonts.Helvetica);
+    const helvB = await pdf.embedFont(StandardFonts.HelveticaBold);
 
-    // --- Example placement (single label demo). Scale up or use your 4x10 grid math. ---
-    const labelW = 400;
-    const barcodeY = 650;
+    // --- same grid geometry as your old file ---
+    const cols = 4, rows = 10;
+    const pageW = 595.28, pageH = 841.89;
+    const marginX = 18, marginY = 18;
+    const gapX = 3, gapY = 3;
+    const labelW = (pageW - 2 * marginX - (cols - 1) * gapX) / cols;
+    const labelH = (pageH - 2 * marginY - (rows - 1) * gapY) / rows;
 
-    // Choose module width so overall barcode fits comfortably.
-    // Code128 needs ~ (text length + 3 symbols) * 11 modules + stop (13 mods).
-    const estSymbols = fnsku.length + 3; // start+checksum+stop approx
-    const estModules = estSymbols * 11 + 13;
-    const targetBarcodeWidth = 300;                // px on PDF
-    const moduleW = Math.max(0.6, targetBarcodeWidth / estModules); // >=0.6 for print clarity
-    const barH = 60;
+    // --- draw every label cell ---
+    for (let r = 0; r < rows; r++) {
+      for (let c = 0; c < cols; c++) {
+        const x = marginX + c * (labelW + gapX);
+        const y = pageH - marginY - (r + 1) * labelH - r * gapY;
 
-    const leftX = (595.28 - targetBarcodeWidth) / 2;
+        // compute barcode geometry
+        const barcodeW = labelW * 0.90;
+        const barcodeH = labelH * 0.40;
+        const barcodeX = x + (labelW - barcodeW) / 2;
+        const barcodeY = y + labelH - barcodeH - 6;
 
-    // Draw barcode bars
-    drawCode128OnPage(page, leftX, barcodeY, fnsku, moduleW, barH);
+        // each module width so barcode fits nicely
+        const estModules = (fnsku.length + 3) * 11 + 13;
+        const moduleW = Math.max(0.6, barcodeW / estModules);
 
-    // Human-readable text & fields
-    page.drawText(fnsku, { x: leftX, y: barcodeY - 16, size: 12, font: helvB, color: rgb(0,0,0) });
-    page.drawText(sku,   { x: leftX, y: barcodeY - 32, size: 10, font: helv,  color: rgb(0,0,0) });
-    page.drawText(desc,  { x: leftX, y: barcodeY - 48, size: 9,  font: helv,  color: rgb(0,0,0), maxWidth: 300 });
-    page.drawText(country,{x: leftX, y: barcodeY - 64, size: 9,  font: helvB, color: rgb(0,0,0) });
+        drawCode128(page, barcodeX, barcodeY, fnsku, moduleW, barcodeH);
 
-    // DONE
+        // text sections
+        let cursorY = barcodeY - 12;
+        page.drawText(fnsku, { x, y: cursorY, size: 9, font: helv, width: labelW, color: rgb(0,0,0) });
+        cursorY -= 11;
+        page.drawText(sku, { x, y: cursorY, size: 7, font: helvB, width: labelW, color: rgb(0,0,0) });
+        cursorY -= 11;
+        page.drawText(desc, { x: x + 5, y: cursorY, size: 5, font: helv, width: barcodeW, color: rgb(0,0,0) });
+
+        // bottom line: “NEW” (left) and country (right)
+        const bottomY = y + 7;
+        page.drawText("NEW", { x: barcodeX, y: bottomY, size: 6, font: helvB });
+        const textW = helvB.widthOfTextAtSize(country, 6);
+        page.drawText(country, {
+          x: barcodeX + barcodeW - textW,
+          y: bottomY,
+          size: 6,
+          font: helvB,
+        });
+      }
+    }
+
     const bytes = await pdf.save();
     return new Response(bytes, {
       headers: {
         "Content-Type": "application/pdf",
-        "Content-Disposition": `inline; filename="label_${fnsku}.pdf"`,
+        "Content-Disposition": `inline; filename="labels_${fnsku}.pdf"`,
       },
     });
   } catch (err) {
