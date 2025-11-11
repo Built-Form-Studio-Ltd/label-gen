@@ -125,7 +125,7 @@ export async function onRequest(context) {
 
         // --- FNSKU ---
         let textY = barcodeY - 10;
-        const fnskuSize = 9;
+        const fnskuSize = 7;
         const fnskuW = helv.widthOfTextAtSize(fnsku, fnskuSize);
         page.drawText(fnsku, {
           x: x + (labelW - fnskuW) / 2,
@@ -135,8 +135,8 @@ export async function onRequest(context) {
         });
 
         // --- SKU ---
-        textY -= 10;
-        const skuSize = 7;
+        textY -= 8;
+        const skuSize = 5;
         const skuW = helvB.widthOfTextAtSize(sku, skuSize);
         page.drawText(sku, {
           x: x + (labelW - skuW) / 2,
@@ -145,38 +145,59 @@ export async function onRequest(context) {
           font: helvB
         });
 
-        // --- DESCRIPTION (auto-fit) ---
-        textY -= 9;
+        // --- DESCRIPTION (auto-fit + guaranteed render) ---
+      {
+        // Start just below SKU
+        textY -= 8;
+      
+        // Define available box area (between SKU and bottom texts)
+        const safeBottom = y + 16; // leave space for "NEW" and country
         const descBoxW = labelW * 0.9;
         const descX = x + (labelW - descBoxW) / 2;
-        const maxDescHeight = textY - (y + 18);
-        const minFont = 3.0;
-        let descSize = 5.5;
+        const availableHeight = textY - safeBottom;
+      
+        // Font sizing
+        const minFont = 3.5;
+        const maxFont = 6;
+        let descSize = maxFont;
         let descLines = [];
-
+      
         function makeLines(size) {
-          return wrapText(desc, descBoxW, helv, size);
+          return wrapText(desc.trim(), descBoxW, helv, size);
         }
-
-        // shrink font until fits
+      
+        // Try shrinking font until text fits in available height
         while (descSize >= minFont) {
           descLines = makeLines(descSize);
-          const totalHeight = descLines.length * (descSize + 1.2);
-          if (totalHeight <= maxDescHeight) break;
+          const totalHeight = descLines.length * (descSize + 1.0);
+          if (totalHeight <= availableHeight) break;
           descSize -= 0.3;
         }
-
+      
+        // Draw the description, top-down
         let drawY = textY;
         for (const line of descLines) {
-          if (drawY < y + 10) break;
+          if (drawY < safeBottom) break; // avoid overlapping "NEW"
           page.drawText(line, {
             x: descX,
             y: drawY,
             size: descSize,
             font: helv,
           });
-          drawY -= descSize + 1.2;
+          drawY -= descSize + 1.0;
         }
+      
+        // If nothing drawn (edge cases with very long text), force at least one line
+        if (!descLines.length) {
+          page.drawText(desc.slice(0, 40), {
+            x: descX,
+            y: safeBottom + 10,
+            size: minFont,
+            font: helv,
+          });
+        }
+      }
+
 
         // --- NEW + COUNTRY ---
         const bottomY = y + 6;
