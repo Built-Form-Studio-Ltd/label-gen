@@ -150,7 +150,7 @@ export async function onRequest(context) {
         const descBoxW = labelW * 0.9;
         const descX = x + (labelW - descBoxW) / 2;
         const maxDescHeight = textY - (y + 18);
-        const minFont = 4.0;
+        const minFont = 3.0;
         let descSize = 5.5;
         let descLines = [];
 
@@ -168,7 +168,7 @@ export async function onRequest(context) {
 
         let drawY = textY;
         for (const line of descLines) {
-          if (drawY < y + 15) break;
+          if (drawY < y + 10) break;
           page.drawText(line, {
             x: descX,
             y: drawY,
