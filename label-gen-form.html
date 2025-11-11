@@ -5,10 +5,37 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Label Generator</title>
   <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    .fade-in {
+      opacity: 0;
+      transform: translateY(-10px);
+      animation: fadeIn 0.4s forwards;
+    }
+    @keyframes fadeIn {
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+    .fade-out {
+      opacity: 1;
+      transform: translateY(0);
+      animation: fadeOut 0.4s forwards;
+    }
+    @keyframes fadeOut {
+      to {
+        opacity: 0;
+        transform: translateY(-10px);
+      }
+    }
+  </style>
 </head>
 <body class="h-full flex items-center justify-center p-6 bg-gray-100 font-sans">
-  <div class="w-full max-w-lg bg-white rounded-xl shadow-2xl p-8 md:p-10">
+  <div class="w-full max-w-lg bg-white rounded-xl shadow-2xl p-8 md:p-10 relative">
     <h1 class="text-3xl font-bold text-center text-gray-800 mb-8">Label Generator</h1>
+
+    <!-- ✅ Toast container (hidden by default) -->
+    <div id="toast" class="hidden absolute top-4 left-1/2 -translate-x-1/2 bg-green-600 text-white px-6 py-3 rounded-lg shadow-lg font-medium"></div>
 
     <form id="labelForm" class="space-y-6">
       <div>
@@ -54,6 +81,22 @@ Jfa - Cerotti assortiti lavabili (6 dimensioni), 100 cerotti per scatola
   </div>
 
   <script>
+    // ✅ Function to show a temporary Tailwind toast
+    function showToast(message, color = "green") {
+      const toast = document.getElementById("toast");
+      toast.textContent = message;
+      toast.className = `absolute top-4 left-1/2 -translate-x-1/2 bg-${color}-600 text-white px-6 py-3 rounded-lg shadow-lg font-medium fade-in`;
+      toast.classList.remove("hidden");
+
+      // Hide after 3 seconds with fade-out
+      setTimeout(() => {
+        toast.classList.replace("fade-in", "fade-out");
+        setTimeout(() => {
+          toast.classList.add("hidden");
+        }, 400);
+      }, 3000);
+    }
+
     document.getElementById("labelForm").addEventListener("submit", async (e) => {
       e.preventDefault();
 
@@ -71,7 +114,8 @@ Jfa - Cerotti assortiti lavabili (6 dimensioni), 100 cerotti per scatola
         const res = await fetch(url);
         if (!res.ok) {
           const txt = await res.text();
-          alert("Error generating PDF:\n" + txt);
+          showToast("❌ Error generating PDF", "red");
+          console.error(txt);
           return;
         }
 
@@ -83,8 +127,12 @@ Jfa - Cerotti assortiti lavabili (6 dimensioni), 100 cerotti per scatola
         a.download = `labels_${document.getElementById("fnsku").value || "label"}.pdf`;
         a.click();
         URL.revokeObjectURL(blobUrl);
+
+        // ✅ Show success toast
+        showToast("✅ Label PDF generated successfully!");
       } catch (err) {
-        alert("Failed to fetch PDF:\n" + err.message);
+        showToast("❌ Failed to fetch PDF", "red");
+        console.error(err);
       }
     });
   </script>
