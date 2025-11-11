@@ -145,7 +145,7 @@ export async function onRequest(context) {
           font: helvB
         });
 
-       // --- DESCRIPTION (auto-fit + centered under barcode) ---
+// --- DESCRIPTION (auto-fit + always centered under barcode) ---
 {
   // Start just below SKU
   textY -= 5;
@@ -156,7 +156,7 @@ export async function onRequest(context) {
 
   // Restrict width to barcode area
   const descBoxW = barcodeW;
-  const descX = barcodeX - 5; // left edge of barcode
+  const descX = barcodeX;
 
   // Font sizing
   const minFont = 3.5;
@@ -179,8 +179,9 @@ export async function onRequest(context) {
   // Draw each line horizontally centered within barcode width
   let drawY = textY;
   for (const line of descLines) {
-    const lineWidth = helv.widthOfTextAtSize(line, descSize);
-    const centeredX = descX + (descBoxW - lineWidth) / 2; // center within barcode width
+    // Measure actual line width
+    const actualWidth = helv.widthOfTextAtSize(line, descSize);
+    const centeredX = descX + (barcodeW - actualWidth) / 2;
     page.drawText(line, {
       x: centeredX,
       y: drawY,
@@ -190,11 +191,11 @@ export async function onRequest(context) {
     drawY -= descSize + 1.0;
   }
 
-  // If nothing drawn (edge cases with very long text), force one line centered
+  // If nothing drawn (edge cases), render one safe centered line
   if (!descLines.length) {
     const fallback = desc.slice(0, 40);
     const fallbackWidth = helv.widthOfTextAtSize(fallback, minFont);
-    const centeredX = descX + (descBoxW - fallbackWidth) / 2;
+    const centeredX = descX + (barcodeW - fallbackWidth) / 2;
     page.drawText(fallback, {
       x: centeredX,
       y: safeBottom + 10,
@@ -203,6 +204,7 @@ export async function onRequest(context) {
     });
   }
 }
+
 
 
 
