@@ -148,7 +148,7 @@ export async function onRequest(context) {
         // --- DESCRIPTION (auto-fit + guaranteed render) ---
       {
         // Start just below SKU
-        textY -= 8;
+        textY -= 5;
       
         // Define available box area (between SKU and bottom texts)
         const safeBottom = y + 8; // leave space for "NEW" and country
@@ -157,7 +157,7 @@ export async function onRequest(context) {
         const availableHeight = textY - safeBottom;
       
         // Font sizing
-        const minFont = 2.5;
+        const minFont = 3.5;
         const maxFont = 4;
         let descSize = maxFont;
         let descLines = [];
@@ -205,7 +205,7 @@ export async function onRequest(context) {
         page.drawText(country, {
           x: x + barcodeW - countryW - 5,
           y: bottomY,
-          size: 3,
+          size: 4,
           font: helvB
         });
       }
