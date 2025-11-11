@@ -73,24 +73,35 @@ export async function onRequest(context) {
     const { request } = context;
     let params = new URLSearchParams();
 
+    // --- Robust parameter parsing (covers GET, POST, URL-encoded, multipart) ---
     if (request.method === "POST") {
-      const formData = await request.formData();
-      for (const [k, v] of formData.entries()) params.set(k, v);
+      const contentType = request.headers.get("content-type") || "";
+      if (contentType.includes("application/x-www-form-urlencoded")) {
+        const text = await request.text();
+        params = new URLSearchParams(text);
+      } else {
+        const formData = await request.formData();
+        for (const [k, v] of formData.entries()) params.set(k, v);
+      }
     } else {
       params = new URL(request.url).searchParams;
     }
 
+    // --- Collect values ---
     const fnsku   = params.get("fnsku")   || "X000000000";
     const sku     = params.get("sku")     || "SKU123";
     const desc    = params.get("desc")    || "Sample Product";
     const country = params.get("country") || "UK";
 
+    // --- TEMP diagnostic: log params so you can see what Cloudflare received ---
+    console.log({ fnsku, sku, desc, country });
+
+    // --- Create PDF ---
     const pdf = await PDFDocument.create();
     const page = pdf.addPage([595.28, 841.89]);
     const helv  = await pdf.embedFont(StandardFonts.Helvetica);
     const helvB = await pdf.embedFont(StandardFonts.HelveticaBold);
 
-    // Grid
     const cols = 4, rows = 10;
     const pageW = 595.28, pageH = 841.89;
     const marginX = 18, marginY = 18;
@@ -110,88 +121,92 @@ export async function onRequest(context) {
 
         const estModules = (fnsku.length + 3) * 11 + 13;
         const moduleW = Math.max(0.7, barcodeW / estModules);
-
         drawCode128(page, barcodeX, barcodeY, fnsku, moduleW, barcodeH);
 
-        // FNSKU
+        // --- FNSKU ---
         let textY = barcodeY - 10;
         const fnskuSize = 9;
         const fnskuW = helv.widthOfTextAtSize(fnsku, fnskuSize);
-        page.drawText(fnsku, { x: x + (labelW - fnskuW) / 2, y: textY, size: fnskuSize, font: helv });
+        page.drawText(fnsku, {
+          x: x + (labelW - fnskuW) / 2,
+          y: textY,
+          size: fnskuSize,
+          font: helv
+        });
 
-        // SKU
+        // --- SKU ---
         textY -= 10;
         const skuSize = 7;
         const skuW = helvB.widthOfTextAtSize(sku, skuSize);
-        page.drawText(sku, { x: x + (labelW - skuW) / 2, y: textY, size: skuSize, font: helvB });
+        page.drawText(sku, {
+          x: x + (labelW - skuW) / 2,
+          y: textY,
+          size: skuSize,
+          font: helvB
+        });
 
-        // Description (auto-fit)
-        {
-          // vertical starting point (just below SKU)
-          textY -= 9;
-        
-          // define box limits
-          const descBoxW = labelW * 0.9;
-          const descX = x + (labelW - descBoxW) / 2;
-          const maxDescHeight = (textY - (y + 18)); // leave safe space above "NEW"
-          const minFont = 4.0;      // don’t go smaller than this
-          let descSize = 5.5;       // starting font size
-          let descLines = [];
-        
-          // wrap helper using current font size
-          function makeLines(size) {
-            return wrapText(desc, descBoxW, helv, size);
-          }
-        
-          // find largest font size that fits the box height
-          while (descSize >= minFont) {
-            descLines = makeLines(descSize);
-            const totalHeight = descLines.length * (descSize + 1.2);
-            if (totalHeight <= maxDescHeight) break;
-            descSize -= 0.3; // shrink step
-          }
-        
-          // draw the text lines centered within the box
-          const usedHeight = descLines.length * (descSize + 1.2);
-          let drawY = textY; // top-down placement
-          for (let i = 0; i < descLines.length; i++) {
-            if (drawY < y + 15) break;
-            page.drawText(descLines[i], {
-              x: descX,
-              y: drawY,
-              size: descSize,
-              font: helv,
-            });
-            drawY -= descSize + 1.2;
-          }
+        // --- DESCRIPTION (auto-fit) ---
+        textY -= 9;
+        const descBoxW = labelW * 0.9;
+        const descX = x + (labelW - descBoxW) / 2;
+        const maxDescHeight = textY - (y + 18);
+        const minFont = 4.0;
+        let descSize = 5.5;
+        let descLines = [];
+
+        function makeLines(size) {
+          return wrapText(desc, descBoxW, helv, size);
         }
 
+        // shrink font until fits
+        while (descSize >= minFont) {
+          descLines = makeLines(descSize);
+          const totalHeight = descLines.length * (descSize + 1.2);
+          if (totalHeight <= maxDescHeight) break;
+          descSize -= 0.3;
+        }
 
-        // NEW + Country
+        let drawY = textY;
+        for (const line of descLines) {
+          if (drawY < y + 15) break;
+          page.drawText(line, {
+            x: descX,
+            y: drawY,
+            size: descSize,
+            font: helv,
+          });
+          drawY -= descSize + 1.2;
+        }
+
+        // --- NEW + COUNTRY ---
         const bottomY = y + 6;
         page.drawText("NEW", { x: x + 5, y: bottomY, size: 6, font: helvB });
         const countryW = helvB.widthOfTextAtSize(country, 6);
-        page.drawText(country, { x: x + labelW - countryW - 5, y: bottomY, size: 6, font: helvB });
+        page.drawText(country, {
+          x: x + labelW - countryW - 5,
+          y: bottomY,
+          size: 6,
+          font: helvB
+        });
       }
     }
 
     const bytes = await pdf.save();
-
     return new Response(bytes, {
       headers: {
         "Content-Type": "application/pdf",
         "Content-Disposition": `attachment; filename="labels_${fnsku}.pdf"`,
         "Access-Control-Allow-Origin": "*",
-        "Access-Control-Allow-Methods": "GET,POST,OPTIONS",
-      },
+        "Access-Control-Allow-Methods": "GET,POST,OPTIONS"
+      }
     });
   } catch (err) {
     return new Response(`Failed to generate PDF: ${err.message}`, {
       status: 500,
       headers: {
         "Access-Control-Allow-Origin": "*",
-        "Access-Control-Allow-Methods": "GET,POST,OPTIONS",
-      },
+        "Access-Control-Allow-Methods": "GET,POST,OPTIONS"
+      }
     });
   }
 }
