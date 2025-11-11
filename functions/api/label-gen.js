@@ -114,7 +114,7 @@ export async function onRequest(context) {
         const x = marginX + c * (labelW + gapX);
         const y = pageH - marginY - (r + 1) * labelH - r * gapY;
 
-        const barcodeW = labelW * 0.9;
+        const barcodeW = labelW * 0.95;
         const barcodeH = labelH * 0.4;
         const barcodeX = x + (labelW - barcodeW) / 2;
         const barcodeY = y + labelH - barcodeH - 10;
@@ -124,8 +124,8 @@ export async function onRequest(context) {
         drawCode128(page, barcodeX, barcodeY, fnsku, moduleW, barcodeH);
 
         // --- FNSKU ---
-        let textY = barcodeY - 10;
-        const fnskuSize = 7;
+        let textY = barcodeY - 8;
+        const fnskuSize = 6;
         const fnskuW = helv.widthOfTextAtSize(fnsku, fnskuSize);
         page.drawText(fnsku, {
           x: x + (labelW - fnskuW) / 2,
@@ -151,14 +151,14 @@ export async function onRequest(context) {
         textY -= 8;
       
         // Define available box area (between SKU and bottom texts)
-        const safeBottom = y + 16; // leave space for "NEW" and country
+        const safeBottom = y + 8; // leave space for "NEW" and country
         const descBoxW = labelW * 0.9;
         const descX = x + (labelW - descBoxW) / 2;
         const availableHeight = textY - safeBottom;
       
         // Font sizing
-        const minFont = 3.5;
-        const maxFont = 6;
+        const minFont = 1.5;
+        const maxFont = 4;
         let descSize = maxFont;
         let descLines = [];
       
@@ -171,13 +171,12 @@ export async function onRequest(context) {
           descLines = makeLines(descSize);
           const totalHeight = descLines.length * (descSize + 1.0);
           if (totalHeight <= availableHeight) break;
-          descSize -= 0.3;
+          descSize -= 0.2;
         }
       
         // Draw the description, top-down
         let drawY = textY;
         for (const line of descLines) {
-          if (drawY < safeBottom) break; // avoid overlapping "NEW"
           page.drawText(line, {
             x: descX,
             y: drawY,
@@ -200,13 +199,13 @@ export async function onRequest(context) {
 
 
         // --- NEW + COUNTRY ---
-        const bottomY = y + 6;
-        page.drawText("NEW", { x: x + 5, y: bottomY, size: 6, font: helvB });
-        const countryW = helvB.widthOfTextAtSize(country, 6);
+        const bottomY = y + 5;
+        page.drawText("NEW", { x: x + 5, y: bottomY, size: 3, font: helvB });
+        const countryW = helvB.widthOfTextAtSize(country, 3);
         page.drawText(country, {
-          x: x + labelW - countryW - 5,
+          x: x + barcodeW - countryW - 5,
           y: bottomY,
-          size: 6,
+          size: 3,
           font: helvB
         });
       }
