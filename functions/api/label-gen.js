@@ -146,74 +146,72 @@ export async function onRequest(context) {
         });
 
 // --- DESCRIPTION (auto-fit + perfectly centered within barcode width) ---
-{
-  textY -= 5; // position below SKU
-
-  const safeBottom = y + 8; // space for NEW + country
-  const availableHeight = textY - safeBottom;
-
-  // Restrict width to barcode area
-  const descBoxW = barcodeW;
-  const descX = barcodeX;
-
-  // Font size range
-  const minFont = 3.5;
-  const maxFont = 4.5;
-  let descSize = maxFont;
-  let descLines = [];
-
-  function makeLines(size) {
-    return wrapText(desc.trim(), descBoxW, helv, size);
-  }
-
-  // Shrink font until text fits in height
-  while (descSize >= minFont) {
-    descLines = makeLines(descSize);
-    const totalHeight = descLines.length * (descSize + 1.0);
-    if (totalHeight <= availableHeight) break;
-    descSize -= 0.2;
-  }
-
-  // Extra safety: shrink if any single line still too wide
-  let widest = 0;
-  for (const line of descLines) {
-    widest = Math.max(widest, helv.widthOfTextAtSize(line, descSize));
-  }
-  while (widest > descBoxW && descSize > minFont) {
-    descSize -= 0.2;
-    widest = 0;
-    for (const line of descLines) {
-      widest = Math.max(widest, helv.widthOfTextAtSize(line, descSize));
-    }
-  }
-
-  // Draw centered lines under barcode
-  let drawY = textY;
-  for (const line of descLines) {
-    const actualWidth = helv.widthOfTextAtSize(line, descSize);
-    const centeredX = descX + (barcodeW - actualWidth) / 2;
-    page.drawText(line, {
-      x: centeredX,
-      y: drawY,
-      size: descSize,
-      font: helv,
-    });
-    drawY -= descSize + 1.0;
-  }
-
-  // Fallback for edge cases (extremely long desc)
-  if (!descLines.length) {
-    const fallback = desc.slice(0, 40);
-    const fallbackWidth = helv.widthOfTextAtSize(fallback, minFont);
-    const centeredX = descX + (barcodeW - fallbackWidth) / 2;
-    page.drawText(fallback, {
-      x: centeredX,
-      y: safeBottom + 10,
-      size: minFont,
-      font: helv,
-    });
-  }
-
+      textY -= 5; // position below SKU
+    
+      const safeBottom = y + 8; // space for NEW + country
+      const availableHeight = textY - safeBottom;
+    
+      // Restrict width to barcode area
+      const descBoxW = barcodeW;
+      const descX = barcodeX;
+    
+      // Font size range
+      const minFont = 3.5;
+      const maxFont = 4.5;
+      let descSize = maxFont;
+      let descLines = [];
+    
+      function makeLines(size) {
+        return wrapText(desc.trim(), descBoxW, helv, size);
+      }
+    
+      // Shrink font until text fits in height
+      while (descSize >= minFont) {
+        descLines = makeLines(descSize);
+        const totalHeight = descLines.length * (descSize + 1.0);
+        if (totalHeight <= availableHeight) break;
+        descSize -= 0.2;
+      }
+    
+      // Extra safety: shrink if any single line still too wide
+      let widest = 0;
+      for (const line of descLines) {
+        widest = Math.max(widest, helv.widthOfTextAtSize(line, descSize));
+      }
+      while (widest > descBoxW && descSize > minFont) {
+        descSize -= 0.2;
+        widest = 0;
+        for (const line of descLines) {
+          widest = Math.max(widest, helv.widthOfTextAtSize(line, descSize));
+        }
+      }
+    
+      // Draw centered lines under barcode
+      let drawY = textY;
+      for (const line of descLines) {
+        const actualWidth = helv.widthOfTextAtSize(line, descSize);
+        const centeredX = descX + (barcodeW - actualWidth) / 2;
+        page.drawText(line, {
+          x: centeredX,
+          y: drawY,
+          size: descSize,
+          font: helv,
+        });
+        drawY -= descSize + 1.0;
+      }
+    
+      // Fallback for edge cases (extremely long desc)
+      if (!descLines.length) {
+        const fallback = desc.slice(0, 40);
+        const fallbackWidth = helv.widthOfTextAtSize(fallback, minFont);
+        const centeredX = descX + (barcodeW - fallbackWidth) / 2;
+        page.drawText(fallback, {
+          x: centeredX,
+          y: safeBottom + 10,
+          size: minFont,
+          font: helv,
+        });
+      }
   // --- NEW + COUNTRY ---
   const bottomY = y + 5;
   page.drawText("NEW", { x: x + 5, y: bottomY, size: 4, font: helvB });
@@ -225,7 +223,7 @@ export async function onRequest(context) {
     font: helvB
   });
 }
-
+    }      
 
     const bytes = await pdf.save();
     return new Response(bytes, {
