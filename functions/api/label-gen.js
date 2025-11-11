@@ -136,7 +136,7 @@ export async function onRequest(context) {
 
         // --- SKU ---
         textY -= 8;
-        const skuSize = 5;
+        const skuSize = 5.5;
         const skuW = helvB.widthOfTextAtSize(sku, skuSize);
         page.drawText(sku, {
           x: x + (labelW - skuW) / 2,
@@ -158,7 +158,7 @@ export async function onRequest(context) {
       
         // Font sizing
         const minFont = 3.5;
-        const maxFont = 4;
+        const maxFont = 4.5;
         let descSize = maxFont;
         let descLines = [];
       
@@ -174,11 +174,13 @@ export async function onRequest(context) {
           descSize -= 0.2;
         }
       
-        // Draw the description, top-down
+        // Draw each line horizontally centered
         let drawY = textY;
         for (const line of descLines) {
+          const lineWidth = helv.widthOfTextAtSize(line, descSize);
+          const centeredX = x + (labelW - lineWidth) / 2;
           page.drawText(line, {
-            x: descX,
+            x: centeredX,
             y: drawY,
             size: descSize,
             font: helv,
