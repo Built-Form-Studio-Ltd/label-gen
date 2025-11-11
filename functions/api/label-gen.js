@@ -125,17 +125,47 @@ export async function onRequest(context) {
         const skuW = helvB.widthOfTextAtSize(sku, skuSize);
         page.drawText(sku, { x: x + (labelW - skuW) / 2, y: textY, size: skuSize, font: helvB });
 
-        // Description (wrapped)
-        textY -= 9;
-        const descSize = 5;
-        const descBoxW = labelW * 0.9;
-        const descX = x + (labelW - descBoxW) / 2;
-        const descLines = wrapText(desc, descBoxW, helv, descSize);
-        for (let i = 0; i < descLines.length; i++) {
-          if (textY - 6 < y + 12) break;
-          page.drawText(descLines[i], { x: descX, y: textY, size: descSize, font: helv });
-          textY -= descSize + 1.5;
+        // Description (auto-fit)
+        {
+          // vertical starting point (just below SKU)
+          textY -= 9;
+        
+          // define box limits
+          const descBoxW = labelW * 0.9;
+          const descX = x + (labelW - descBoxW) / 2;
+          const maxDescHeight = (textY - (y + 18)); // leave safe space above "NEW"
+          const minFont = 4.0;      // don’t go smaller than this
+          let descSize = 5.5;       // starting font size
+          let descLines = [];
+        
+          // wrap helper using current font size
+          function makeLines(size) {
+            return wrapText(desc, descBoxW, helv, size);
+          }
+        
+          // find largest font size that fits the box height
+          while (descSize >= minFont) {
+            descLines = makeLines(descSize);
+            const totalHeight = descLines.length * (descSize + 1.2);
+            if (totalHeight <= maxDescHeight) break;
+            descSize -= 0.3; // shrink step
+          }
+        
+          // draw the text lines centered within the box
+          const usedHeight = descLines.length * (descSize + 1.2);
+          let drawY = textY; // top-down placement
+          for (let i = 0; i < descLines.length; i++) {
+            if (drawY < y + 15) break;
+            page.drawText(descLines[i], {
+              x: descX,
+              y: drawY,
+              size: descSize,
+              font: helv,
+            });
+            drawY -= descSize + 1.2;
+          }
         }
+
 
         // NEW + Country
         const bottomY = y + 6;
