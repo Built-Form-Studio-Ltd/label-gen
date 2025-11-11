@@ -1,6 +1,5 @@
 globalThis.__dirname = "/";
-// We are now explicitly importing the browser builds, which don't use `fs`
-import PDFDocument from "pdfkit";
+import PDFDocument from 'pdfkit/js/pdfkit.browser.es5.js';
 import bwipjs from "bwip-js/browser";
 
 /**
