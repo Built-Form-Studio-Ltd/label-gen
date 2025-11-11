@@ -43,7 +43,7 @@ function encodeCode128B(text) {
   return codes;
 }
 
-function drawCode128(page, x, y, text, moduleW, barH, color = rgb(0,0,0)) {
+function drawCode128(page, x, y, text, moduleW, barH, color = rgb(0, 0, 0)) {
   const codes = encodeCode128B(text);
   let cursor = x;
   for (const code of codes) {
@@ -51,38 +51,46 @@ function drawCode128(page, x, y, text, moduleW, barH, color = rgb(0,0,0)) {
       const stop = [2,3,3,1,1,1,2];
       let bar = true;
       for (const w of stop) {
-        const wpx = w * moduleW;
-        if (bar) page.drawRectangle({ x: cursor, y, width: wpx, height: barH, color });
-        cursor += wpx; bar = !bar;
+        const width = w * moduleW;
+        if (bar) page.drawRectangle({ x: cursor, y, width, height: barH, color });
+        cursor += width; bar = !bar;
       }
       break;
     }
     const patt = CODE128_PATTERNS[code];
     let bar = true;
     for (const w of patt) {
-      const wpx = w * moduleW;
-      if (bar) page.drawRectangle({ x: cursor, y, width: wpx, height: barH, color });
-      cursor += wpx; bar = !bar;
+      const width = w * moduleW;
+      if (bar) page.drawRectangle({ x: cursor, y, width, height: barH, color });
+      cursor += width; bar = !bar;
     }
   }
 }
 
-export async function onRequestGet(context) {
+/* ---------- POST + GET Handler ---------- */
+export async function onRequest(context) {
   try {
     const { request } = context;
-    const { searchParams } = new URL(request.url);
+    let params = new URLSearchParams();
 
-    const fnsku   = searchParams.get("fnsku")   || "X000000000";
-    const sku     = searchParams.get("sku")     || "SKU123";
-    const desc    = searchParams.get("desc")    || "Sample Product";
-    const country = searchParams.get("country") || "UK";
+    if (request.method === "POST") {
+      const formData = await request.formData();
+      for (const [k, v] of formData.entries()) params.set(k, v);
+    } else {
+      params = new URL(request.url).searchParams;
+    }
+
+    const fnsku   = params.get("fnsku")   || "X000000000";
+    const sku     = params.get("sku")     || "SKU123";
+    const desc    = params.get("desc")    || "Sample Product";
+    const country = params.get("country") || "UK";
 
     const pdf = await PDFDocument.create();
     const page = pdf.addPage([595.28, 841.89]);
     const helv  = await pdf.embedFont(StandardFonts.Helvetica);
     const helvB = await pdf.embedFont(StandardFonts.HelveticaBold);
 
-    // Label grid (same 4×10)
+    // Grid
     const cols = 4, rows = 10;
     const pageW = 595.28, pageH = 841.89;
     const marginX = 18, marginY = 18;
@@ -95,98 +103,84 @@ export async function onRequestGet(context) {
         const x = marginX + c * (labelW + gapX);
         const y = pageH - marginY - (r + 1) * labelH - r * gapY;
 
-        // Barcode geometry
         const barcodeW = labelW * 0.9;
         const barcodeH = labelH * 0.4;
         const barcodeX = x + (labelW - barcodeW) / 2;
-        const barcodeY = y + labelH - barcodeH - 8; // slight upward offset
+        const barcodeY = y + labelH - barcodeH - 10;
 
         const estModules = (fnsku.length + 3) * 11 + 13;
-        const moduleW = Math.max(0.6, barcodeW / estModules);
+        const moduleW = Math.max(0.7, barcodeW / estModules);
 
-        // Draw barcode
         drawCode128(page, barcodeX, barcodeY, fnsku, moduleW, barcodeH);
 
-        // FNSKU (smaller now)
+        // FNSKU
         let textY = barcodeY - 10;
         const fnskuSize = 9;
         const fnskuW = helv.widthOfTextAtSize(fnsku, fnskuSize);
-        page.drawText(fnsku, {
-          x: x + (labelW - fnskuW) / 2,
-          y: textY,
-          size: fnskuSize,
-          font: helv,
-        });
+        page.drawText(fnsku, { x: x + (labelW - fnskuW) / 2, y: textY, size: fnskuSize, font: helv });
 
-        // SKU (bold, smaller)
+        // SKU
         textY -= 10;
         const skuSize = 7;
         const skuW = helvB.widthOfTextAtSize(sku, skuSize);
-        page.drawText(sku, {
-          x: x + (labelW - skuW) / 2,
-          y: textY,
-          size: skuSize,
-          font: helvB,
-        });
+        page.drawText(sku, { x: x + (labelW - skuW) / 2, y: textY, size: skuSize, font: helvB });
 
-        // Description (tiny, wrapped)
+        // Description (wrapped)
         textY -= 9;
         const descSize = 5;
         const descBoxW = labelW * 0.9;
         const descX = x + (labelW - descBoxW) / 2;
         const descLines = wrapText(desc, descBoxW, helv, descSize);
         for (let i = 0; i < descLines.length; i++) {
-          if (textY - 6 < y + 12) break; // prevent overlap with NEW/UK
-          page.drawText(descLines[i], {
-            x: descX,
-            y: textY,
-            size: descSize,
-            font: helv,
-          });
+          if (textY - 6 < y + 12) break;
+          page.drawText(descLines[i], { x: descX, y: textY, size: descSize, font: helv });
           textY -= descSize + 1.5;
         }
 
-        // Bottom row: NEW + Country
+        // NEW + Country
         const bottomY = y + 6;
         page.drawText("NEW", { x: x + 5, y: bottomY, size: 6, font: helvB });
         const countryW = helvB.widthOfTextAtSize(country, 6);
-        page.drawText(country, {
-          x: x + labelW - countryW - 5,
-          y: bottomY,
-          size: 6,
-          font: helvB,
-        });
+        page.drawText(country, { x: x + labelW - countryW - 5, y: bottomY, size: 6, font: helvB });
       }
     }
 
     const bytes = await pdf.save();
+
     return new Response(bytes, {
       headers: {
         "Content-Type": "application/pdf",
-        "Content-Disposition": `inline; filename="labels_${fnsku}.pdf"`,
+        "Content-Disposition": `attachment; filename="labels_${fnsku}.pdf"`,
+        "Access-Control-Allow-Origin": "*",
+        "Access-Control-Allow-Methods": "GET,POST,OPTIONS",
       },
     });
   } catch (err) {
-    return new Response(`Failed to generate PDF: ${err.message}`, { status: 500 });
+    return new Response(`Failed to generate PDF: ${err.message}`, {
+      status: 500,
+      headers: {
+        "Access-Control-Allow-Origin": "*",
+        "Access-Control-Allow-Methods": "GET,POST,OPTIONS",
+      },
+    });
   }
 }
 
-/* ---------- Simple word-wrapping helper ---------- */
+/* ---------- Word wrap helper ---------- */
 function wrapText(text, maxWidth, font, fontSize) {
   const words = text.split(" ");
   const lines = [];
   let line = "";
   for (const word of words) {
-    const testLine = line ? `${line} ${word}` : word;
-    const width = font.widthOfTextAtSize(testLine, fontSize);
+    const test = line ? `${line} ${word}` : word;
+    const width = font.widthOfTextAtSize(test, fontSize);
     if (width > maxWidth && line) {
       lines.push(line);
       line = word;
     } else {
-      line = testLine;
+      line = test;
     }
   }
   if (line) lines.push(line);
   return lines;
 }
-
