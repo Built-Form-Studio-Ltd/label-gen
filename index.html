@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Built Form automations</title>
+    <!-- Load Tailwind CSS for styling -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        /* A simple style for the active link */
+        .app-link.active {
+            background-color: #D1D5DB; /* gray-300 */
+            font-weight: 600; /* semibold */
+        }
+    </style>
+</head>
+<body class="bg-gray-50 font-sans antialiased">
+    <!-- Main container uses flexbox to create the sidebar layout -->
+    <div class="flex h-screen bg-white">
+        <!-- Left Sidebar Navigation -->
+        <aside class="w-64 flex-shrink-0 bg-gray-100 border-r border-gray-200">
+            <div class="p-4">
+                <h1 class="text-xl font-semibold text-gray-800">Built Form Automations</h1>
+            </div>
+            <nav class="mt-4">
+                <ul class="space-y-2 px-4">
+                    <!--
+                      Each list item is an "app-link".
+                      We store the URL to be loaded in the 'data-src' attribute.
+                    -->
+                    <li>
+                        <a href="#"
+                           class="app-link flex items-center p-3 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors duration-150"
+                           data-src="https://automations.built-form.co.uk/label-gen-form">
+                            Label Generator
+                        </a>
+                    </li>
+                    <li>
+                        <a href="#"
+                           class="app-link flex items-center p-3 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors duration-150"
+                           data-src="https://automations.built-form.co.uk/label-gen-form">
+                            App 2
+                        </a>
+                    </li>
+                    <li>
+                        <a href="#"
+                           class="app-link flex items-center p-3 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors duration-150"
+                           data-src="https://automations.built-form.co.uk/label-gen-form">
+                            App 3
+                        </a>
+                    </li>
+                </ul>
+            </nav>
+        </aside>
+        <!-- Main Content Area -->
+        <main class="flex-1 flex flex-col">
+            <!-- Header for the content area -->
+            <header class="bg-white border-b border-gray-200 p-4 shadow-sm">
+                <h2 id="app-title" class="text-lg font-semibold text-gray-900">Welcome</h2>
+            </header>
+            <!--
+              Iframe container that grows to fill the remaining space.
+              The padding 'p-4' creates a small gutter around the iframe.
+            -->
+            <div class="flex-1 p-4">
+                <iframe id="app-frame"
+                        src="about:blank"
+                        class="w-full h-full border border-gray-300 rounded-lg shadow-inner"
+                        title="App Content">
+                    Your browser does not support iframes.
+                </iframe>
+            </div>
+        </main>
+    </div>
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const appLinks = document.querySelectorAll('.app-link');
+            const appFrame = document.getElementById('app-frame');
+            const appTitle = document.getElementById('app-title');
+            // Store the currently active link
+            let currentActiveLink = null;
+            appLinks.forEach(link => {
+                link.addEventListener('click', function(event) {
+                    event.preventDefault(); // Stop the link from navigating
+                    // Get the URL and title from the clicked link
+                    const url = this.getAttribute('data-src');
+                    const title = this.textContent.trim();
+                    // Load the URL into the iframe
+                    appFrame.src = url;
+                    // Update the header title
+                    appTitle.textContent = title;
+                    // Remove 'active' class from the previous link
+                    if (currentActiveLink) {
+                        currentActiveLink.classList.remove('active');
+                    }
+                    // Add 'active' class to the currently clicked link
+                    this.classList.add('active');
+                    currentActiveLink = this;
+                });
+            });
+            // Optional: Click the first link by default on page load
+            if (appLinks.length > 0) {
+                appLinks[0].click();
+            } else {
+                appTitle.textContent = 'No apps found';
+                appFrame.src = 'about:blank';
+            }
+        });
+    </script>
+</body>
+</html>
+
+
+
+
+
+
+
+
+
+
+
+
+
