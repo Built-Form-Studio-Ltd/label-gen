@@ -157,7 +157,7 @@ export async function onRequest(context) {
         const availableHeight = textY - safeBottom;
       
         // Font sizing
-        const minFont = 1.5;
+        const minFont = 2.5;
         const maxFont = 4;
         let descSize = maxFont;
         let descLines = [];
@@ -200,8 +200,8 @@ export async function onRequest(context) {
 
         // --- NEW + COUNTRY ---
         const bottomY = y + 5;
-        page.drawText("NEW", { x: x + 5, y: bottomY, size: 3, font: helvB });
-        const countryW = helvB.widthOfTextAtSize(country, 3);
+        page.drawText("NEW", { x: x + 5, y: bottomY, size: 4, font: helvB });
+        const countryW = helvB.widthOfTextAtSize(country, 4);
         page.drawText(country, {
           x: x + barcodeW - countryW - 5,
           y: bottomY,
