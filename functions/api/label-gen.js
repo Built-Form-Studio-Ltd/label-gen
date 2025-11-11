@@ -152,8 +152,8 @@ export async function onRequest(context) {
       
         // Define available box area (between SKU and bottom texts)
         const safeBottom = y + 8; // leave space for "NEW" and country
-        const descBoxW = labelW * 0.9;
-        const descX = x + (labelW - descBoxW) / 2;
+        const descBoxW = barcodeW;
+        const descX = barcodeX;
         const availableHeight = textY - safeBottom;
       
         // Font sizing
