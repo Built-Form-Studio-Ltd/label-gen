@@ -31,7 +31,7 @@ const CODE128_PATTERNS = [
 ];
 
 function encodeCode128B(text) {
-  const codes = [104]; // Start B
+  const codes = [104];
   for (const ch of text) {
     const cc = ch.charCodeAt(0);
     if (cc < 32 || cc > 126) throw new Error(`Unsupported char: ${ch}`);
@@ -39,7 +39,7 @@ function encodeCode128B(text) {
   }
   let sum = codes[0];
   for (let i = 1; i < codes.length; i++) sum += codes[i] * i;
-  codes.push(sum % 103, 106); // checksum, STOP
+  codes.push(sum % 103, 106);
   return codes;
 }
 
@@ -47,7 +47,7 @@ function drawCode128(page, x, y, text, moduleW, barH, color = rgb(0,0,0)) {
   const codes = encodeCode128B(text);
   let cursor = x;
   for (const code of codes) {
-    if (code === 106) { // STOP: 2-3-3-1-1-1-2 (13 modules; 4 bars/3 spaces)
+    if (code === 106) {
       const stop = [2,3,3,1,1,1,2];
       let bar = true;
       for (const w of stop) {
@@ -67,7 +67,6 @@ function drawCode128(page, x, y, text, moduleW, barH, color = rgb(0,0,0)) {
   }
 }
 
-/* ----------------------------- Cloudflare Pages Function ----------------------------- */
 export async function onRequestGet(context) {
   try {
     const { request } = context;
@@ -79,11 +78,11 @@ export async function onRequestGet(context) {
     const country = searchParams.get("country") || "UK";
 
     const pdf = await PDFDocument.create();
-    const page = pdf.addPage([595.28, 841.89]); // A4
+    const page = pdf.addPage([595.28, 841.89]);
     const helv  = await pdf.embedFont(StandardFonts.Helvetica);
     const helvB = await pdf.embedFont(StandardFonts.HelveticaBold);
 
-    // Same grid geometry as your original pdfkit version:contentReference[oaicite:1]{index=1}
+    // Label grid (same 4×10)
     const cols = 4, rows = 10;
     const pageW = 595.28, pageH = 841.89;
     const marginX = 18, marginY = 18;
@@ -96,63 +95,63 @@ export async function onRequestGet(context) {
         const x = marginX + c * (labelW + gapX);
         const y = pageH - marginY - (r + 1) * labelH - r * gapY;
 
-        // --- Barcode at the TOP of the label (to match your target image) ---
-        const barcodeW = labelW * 0.90;
-        const barcodeH = labelH * 0.40;
+        // Barcode geometry
+        const barcodeW = labelW * 0.9;
+        const barcodeH = labelH * 0.4;
         const barcodeX = x + (labelW - barcodeW) / 2;
-        const barcodeY = y + labelH - barcodeH - 6;
+        const barcodeY = y + labelH - barcodeH - 8; // slight upward offset
 
-        // Module width so barcode fits (keep ≥0.6 for crisp print)
         const estModules = (fnsku.length + 3) * 11 + 13;
         const moduleW = Math.max(0.6, barcodeW / estModules);
 
         // Draw barcode
         drawCode128(page, barcodeX, barcodeY, fnsku, moduleW, barcodeH);
 
-        // --- Text stack (all centred), then bottom row NEW (left) / country (right) ---
-        // FNSKU (centre) just under barcode
-        let textY = barcodeY - 12;
-        const fnskuSize = 12; // slightly larger like your example image
+        // FNSKU (smaller now)
+        let textY = barcodeY - 10;
+        const fnskuSize = 9;
         const fnskuW = helv.widthOfTextAtSize(fnsku, fnskuSize);
         page.drawText(fnsku, {
           x: x + (labelW - fnskuW) / 2,
           y: textY,
           size: fnskuSize,
           font: helv,
-          color: rgb(0,0,0),
         });
 
-        // SKU bold (centre)
-        textY -= 16;
-        const skuSize = 9;
+        // SKU (bold, smaller)
+        textY -= 10;
+        const skuSize = 7;
         const skuW = helvB.widthOfTextAtSize(sku, skuSize);
         page.drawText(sku, {
           x: x + (labelW - skuW) / 2,
           y: textY,
           size: skuSize,
           font: helvB,
-          color: rgb(0,0,0),
         });
 
-        // Description (centre, small)
-        textY -= 14;
-        const descSize = 7;
-        const descW = labelW * 0.90;
-        page.drawText(desc, {
-          x: x + (labelW - descW) / 2,
-          y: textY,
-          size: descSize,
-          font: helv,
-          color: rgb(0,0,0),
-          maxWidth: descW,
-        });
+        // Description (tiny, wrapped)
+        textY -= 9;
+        const descSize = 5;
+        const descBoxW = labelW * 0.9;
+        const descX = x + (labelW - descBoxW) / 2;
+        const descLines = wrapText(desc, descBoxW, helv, descSize);
+        for (let i = 0; i < descLines.length; i++) {
+          if (textY - 6 < y + 12) break; // prevent overlap with NEW/UK
+          page.drawText(descLines[i], {
+            x: descX,
+            y: textY,
+            size: descSize,
+            font: helv,
+          });
+          textY -= descSize + 1.5;
+        }
 
-        // Bottom row: NEW (left) and country (right) — like your pdfkit layout:contentReference[oaicite:2]{index=2}
-        const bottomY = y + 7;
-        page.drawText("NEW", { x: barcodeX, y: bottomY, size: 6, font: helvB });
+        // Bottom row: NEW + Country
+        const bottomY = y + 6;
+        page.drawText("NEW", { x: x + 5, y: bottomY, size: 6, font: helvB });
         const countryW = helvB.widthOfTextAtSize(country, 6);
         page.drawText(country, {
-          x: barcodeX + barcodeW - countryW,
+          x: x + labelW - countryW - 5,
           y: bottomY,
           size: 6,
           font: helvB,
@@ -171,3 +170,23 @@ export async function onRequestGet(context) {
     return new Response(`Failed to generate PDF: ${err.message}`, { status: 500 });
   }
 }
+
+/* ---------- Simple word-wrapping helper ---------- */
+function wrapText(text, maxWidth, font, fontSize) {
+  const words = text.split(" ");
+  const lines = [];
+  let line = "";
+  for (const word of words) {
+    const testLine = line ? `${line} ${word}` : word;
+    const width = font.widthOfTextAtSize(testLine, fontSize);
+    if (width > maxWidth && line) {
+      lines.push(line);
+      line = word;
+    } else {
+      line = testLine;
+    }
+  }
+  if (line) lines.push(line);
+  return lines;
+}
+
