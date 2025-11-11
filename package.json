@@ -3,7 +3,6 @@
   "version": "1.0.0",
   "private": true,
   "dependencies": {
-    "pdfkit": "^0.13.0",
+    "pdf-lib": "^1.17.1",
     "bwip-js": "^4.1.0"
   }
-}
