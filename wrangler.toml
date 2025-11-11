@@ -6,3 +6,4 @@ compatibility_flags = ["nodejs_compat"]
 [build.aliases]
 # This forces the bundler to use the browser-safe build of pdfkit
 "pdfkit" = "pdfkit/js/pdfkit.browser.es5.js"
+"fontkit" = "fontkit/lib/fontkit-browser.js"
