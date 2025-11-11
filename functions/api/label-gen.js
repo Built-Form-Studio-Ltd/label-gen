@@ -145,20 +145,18 @@ export async function onRequest(context) {
           font: helvB
         });
 
-// --- DESCRIPTION (auto-fit + always centered under barcode) ---
+// --- DESCRIPTION (auto-fit + perfectly centered within barcode width) ---
 {
-  // Start just below SKU
-  textY -= 5;
+  textY -= 5; // position below SKU
 
-  // Define available box area (between SKU and bottom texts)
-  const safeBottom = y + 8; // leave space for "NEW" and country
+  const safeBottom = y + 8; // space for NEW + country
   const availableHeight = textY - safeBottom;
 
   // Restrict width to barcode area
   const descBoxW = barcodeW;
   const descX = barcodeX;
 
-  // Font sizing
+  // Font size range
   const minFont = 3.5;
   const maxFont = 4.5;
   let descSize = maxFont;
@@ -168,7 +166,7 @@ export async function onRequest(context) {
     return wrapText(desc.trim(), descBoxW, helv, size);
   }
 
-  // Try shrinking font until text fits in available height
+  // Shrink font until text fits in height
   while (descSize >= minFont) {
     descLines = makeLines(descSize);
     const totalHeight = descLines.length * (descSize + 1.0);
@@ -176,10 +174,22 @@ export async function onRequest(context) {
     descSize -= 0.2;
   }
 
-  // Draw each line horizontally centered within barcode width
+  // Extra safety: shrink if any single line still too wide
+  let widest = 0;
+  for (const line of descLines) {
+    widest = Math.max(widest, helv.widthOfTextAtSize(line, descSize));
+  }
+  while (widest > descBoxW && descSize > minFont) {
+    descSize -= 0.2;
+    widest = 0;
+    for (const line of descLines) {
+      widest = Math.max(widest, helv.widthOfTextAtSize(line, descSize));
+    }
+  }
+
+  // Draw centered lines under barcode
   let drawY = textY;
   for (const line of descLines) {
-    // Measure actual line width
     const actualWidth = helv.widthOfTextAtSize(line, descSize);
     const centeredX = descX + (barcodeW - actualWidth) / 2;
     page.drawText(line, {
@@ -191,7 +201,7 @@ export async function onRequest(context) {
     drawY -= descSize + 1.0;
   }
 
-  // If nothing drawn (edge cases), render one safe centered line
+  // Fallback for edge cases (extremely long desc)
   if (!descLines.length) {
     const fallback = desc.slice(0, 40);
     const fallbackWidth = helv.widthOfTextAtSize(fallback, minFont);
@@ -203,6 +213,21 @@ export async function onRequest(context) {
       font: helv,
     });
   }
+}
+
+
+  // If nothing drawn (edge cases), render one safe centered line
+  // if (!descLines.length) {
+  //   const fallback = desc.slice(0, 40);
+  //   const fallbackWidth = helv.widthOfTextAtSize(fallback, minFont);
+  //   const centeredX = descX + (barcodeW - fallbackWidth) / 2;
+  //   page.drawText(fallback, {
+  //     x: centeredX,
+  //     y: safeBottom + 10,
+  //     size: minFont,
+  //     font: helv,
+  //   });
+  // }
 }
 
 
