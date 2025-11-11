@@ -2,3 +2,7 @@ name = "label-gen"
 pages_build_output_dir = "."
 compatibility_date = "2025-11-10"
 compatibility_flags = ["nodejs_compat"]
+
+[build.aliases]
+# This forces the bundler to use the browser-safe build of pdfkit
+"pdfkit" = "pdfkit/js/pdfkit.browser.es5.js"
