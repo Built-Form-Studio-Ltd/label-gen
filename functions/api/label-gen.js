@@ -193,12 +193,26 @@ export async function onRequest(context) {
         // --- END NEW FONT-FITTING LOOP ---
         // At this point, descLines and descSize are the best-fit
         
-        // Draw ALL lines centered
+        // Draw ALL lines centered — with smart centering that stays within bounds
         let drawY = textY;
         for (const line of descLines) {
           const actualWidth = helv.widthOfTextAtSize(line, descSize);
-          const centeredX = descX + (barcodeW - actualWidth) / 2;
-          
+          let centeredX = descX + (barcodeW - actualWidth) / 2;
+        
+          // --- Smart centering correction ---
+          if (actualWidth > barcodeW) {
+            // Find how much it overflows (total width beyond allowed)
+            const overflow = actualWidth - barcodeW;
+        
+            // Shift left only half the overflow (to keep visual balance)
+            centeredX = descX - overflow / 2;
+        
+            // Clamp again just to be safe
+            if (centeredX < descX) centeredX = descX;
+            if (centeredX + actualWidth > descX + barcodeW)
+              centeredX = descX + barcodeW - actualWidth;
+          }
+        
           page.drawText(line, {
             x: centeredX,
             y: drawY,
@@ -207,6 +221,7 @@ export async function onRequest(context) {
           });
           drawY -= descSize + 1.0;
         }
+
         
         // Fallback for edge cases (this is now redundant but safe to keep)
         if (!descLines.length) {
