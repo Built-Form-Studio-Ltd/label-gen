@@ -5,7 +5,6 @@ export async function onRequest(context) {
   try {
     const { request } = context;
     const url = new URL(request.url);
-    // preserve slashes as-is
     const id = decodeURIComponent(url.searchParams.get("id") || "").trim();
 
     if (!id) {
@@ -18,40 +17,62 @@ export async function onRequest(context) {
       );
     }
 
-    // Generate QR code safely (no canvas)
+    // --- Generate base QR pattern (no canvas) ---
     const qr = qrcode(0, "M");
     qr.addData(id);
     qr.make();
 
     const moduleCount = qr.getModuleCount();
-    const moduleSize = 8; // make QR bigger (each block = 8 pixels)
-    const qrSize = moduleCount * moduleSize;
+    const moduleSize = 10; // block size before upscale
+    const smallSize = moduleCount * moduleSize;
 
-    const qrCanvas = new Uint8ClampedArray(qrSize * qrSize * 4);
-    for (let row = 0; row < moduleCount; row++) {
-      for (let col = 0; col < moduleCount; col++) {
-        const dark = qr.isDark(row, col);
-        const c = dark ? 0 : 255;
-        const i = (row * qrSize + col) * 4;
-        qrCanvas[i] = qrCanvas[i + 1] = qrCanvas[i + 2] = c;
-        qrCanvas[i + 3] = 255;
+    // --- Build RGBA buffer ---
+    const small = new Uint8ClampedArray(smallSize * smallSize * 4);
+    for (let r = 0; r < moduleCount; r++) {
+      for (let c = 0; c < moduleCount; c++) {
+        const dark = qr.isDark(r, c);
+        const color = dark ? 0 : 255;
+        for (let y = 0; y < moduleSize; y++) {
+          for (let x = 0; x < moduleSize; x++) {
+            const i = ((r * moduleSize + y) * smallSize + (c * moduleSize + x)) * 4;
+            small[i] = small[i + 1] = small[i + 2] = color;
+            small[i + 3] = 255;
+          }
+        }
       }
     }
 
-    // Create the PDF
+    // --- Upscale QR buffer (so PDF sees a big image) ---
+    const scale = 4; // 4× bigger physically
+    const bigW = smallSize * scale;
+    const bigH = smallSize * scale;
+    const big = new Uint8ClampedArray(bigW * bigH * 4);
+    for (let y = 0; y < bigH; y++) {
+      for (let x = 0; x < bigW; x++) {
+        const sx = Math.floor(x / scale);
+        const sy = Math.floor(y / scale);
+        const si = (sy * smallSize + sx) * 4;
+        const di = (y * bigW + x) * 4;
+        big[di] = small[si];
+        big[di + 1] = small[si + 1];
+        big[di + 2] = small[si + 2];
+        big[di + 3] = 255;
+      }
+    }
+
+    // --- Create PDF (same 512×512 sticker page) ---
     const pdfDoc = await PDFDocument.create();
-    const page = pdfDoc.addPage([512, 512]); // small square sticker page
+    const page = pdfDoc.addPage([512, 512]);
     const font = await pdfDoc.embedFont(StandardFonts.Helvetica);
 
-    const qrImage = await pdfDoc.embedPng(await encodeToPNG(qrCanvas, qrSize, qrSize));
+    const qrImage = await pdfDoc.embedPng(await encodeToPNG(big, bigW, bigH));
 
-    // Determine layout positions
-    const qrDisplaySize = 450; // make it big and centred
+    // --- Centre layout ---
+    const qrDisplaySize = 420;
     const { width, height } = page.getSize();
     const qrX = (width - qrDisplaySize) / 2;
     const qrY = (height - qrDisplaySize) / 2 + 25;
 
-    // Draw QR in the middle
     page.drawImage(qrImage, {
       x: qrX,
       y: qrY,
@@ -59,7 +80,7 @@ export async function onRequest(context) {
       height: qrDisplaySize,
     });
 
-    // Draw the ID text below
+    // --- ID text below QR ---
     const textSize = 14;
     const textWidth = font.widthOfTextAtSize(id, textSize);
     page.drawText(id, {
@@ -71,7 +92,6 @@ export async function onRequest(context) {
     });
 
     const pdfBytes = await pdfDoc.save();
-
     return new Response(pdfBytes, {
       headers: {
         "Content-Type": "application/pdf",
@@ -93,7 +113,7 @@ export async function onRequest(context) {
   }
 }
 
-/* Helper: Encode RGBA buffer → PNG (Cloudflare-safe) */
+/* --- Same PNG encoder helper as before --- */
 async function encodeToPNG(rgbaArray, width, height) {
   const pngChunks = [new Uint8Array([137, 80, 78, 71, 13, 10, 26, 10])];
   const crc32 = (buf) => {
