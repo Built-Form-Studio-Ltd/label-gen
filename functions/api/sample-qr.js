@@ -61,7 +61,6 @@ export async function onRequest(context) {
     return new Response(bytes, {
       headers: {
         "Content-Type": "application/pdf",
-Back-slash is an escape character in F-Strings. Use double back-slash.
         "Content-Disposition": `attachment; filename="qr_label_${uniqueId}.pdf"`,
         "Access-Control-Allow-Origin": "*",
         "Access-Control-Allow-Methods": "GET,POST,OPTIONS"
