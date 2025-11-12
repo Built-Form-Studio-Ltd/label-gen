@@ -145,7 +145,7 @@ export async function onRequest(context) {
           font: helvB
         });
 
-// --- DESCRIPTION (auto-fit + always centered) ---
+        // --- DESCRIPTION (auto-fit + left-aligned to barcode) ---
         textY -= 5; // position below SKU
         
         const safeBottom = y + 8; // space for NEW + country
@@ -193,56 +193,36 @@ export async function onRequest(context) {
         // --- END NEW FONT-FITTING LOOP ---
         // At this point, descLines and descSize are the best-fit
         
-        // Draw ALL lines centered — with smart centering that stays within bounds
+        // =================================================================
+        // --- FIXED: Draw the description lines (left-aligned) ---
+        // =================================================================
         let drawY = textY;
         for (const line of descLines) {
-          const actualWidth = helv.widthOfTextAtSize(line, descSize);
-          let centeredX = descX + (barcodeW - actualWidth) / 2;
-        
-          // --- Smart centering correction ---
-          const rightEdge = descX + barcodeW; // absolute right boundary of the barcode box
-          if (centeredX + actualWidth > rightEdge) {
-            // How much does it overflow beyond the right edge?
-            const overflow = (centeredX + actualWidth) - rightEdge;
-          
-            // Shift left only half of that overflow (for visual balance)
-            centeredX -= overflow / 2;
-          
-            // Clamp within bounds (safety)
-            if (centeredX-3 < descX) centeredX = descX;
-            if (centeredX + actualWidth > rightEdge)
-              centeredX = rightEdge - actualWidth;
-          }
-
-        
-          //   // Clamp again just to be safe
-          //   if (centeredX < descX) centeredX = descX;
-          //   if (centeredX + actualWidth > descX + barcodeW)
-          //     centeredX = descX + barcodeW - actualWidth;
-        
-        
-          page.drawText(line, {
-            x: centeredX-2,
-            y: drawY,
-            size: descSize,
-            font: helv,
-          });
-          drawY -= descSize + 1.0;
+            // Draw the line starting at the barcode's left edge.
+            // The font-fitting loop already ensured this line is not wider
+            // than barcodeW.
+            page.drawText(line, {
+                x: descX, // Align with barcode's left edge
+                y: drawY,
+                size: descSize,
+                font: helv,
+            });
+            drawY -= descSize + 1.0; // Move Y-cursor down for the next line
         }
-
         
-        // Fallback for edge cases (this is now redundant but safe to keep)
-        if (!descLines.length) {
-          const fallback = desc.slice(0, 40);
-          const fallbackWidth = helv.widthOfTextAtSize(fallback, minFont);
-          const centeredX = descX + (barcodeW - fallbackWidth) / 2;
-          page.drawText(fallback, {
-            x: centeredX-2,
-            y: safeBottom + 10,
-            size: minFont,
-            font: helv,
-          });
+        // =================================================================
+        // --- FIXED: Fallback (if font-fitting failed but text exists) ---
+        // =================================================================
+        if (!descLines.length && desc.trim().length > 0) {
+            const fallback = desc.slice(0, 40); // Truncate
+            page.drawText(fallback, {
+                x: descX, // Align with barcode's left edge
+                y: textY, // Draw at the top
+                size: minFont,
+                font: helv,
+            });
         }
+        
         // --- NEW + COUNTRY ---
         const bottomY = y + 5;
         page.drawText("NEW", { x: x + 5, y: bottomY, size: 4, font: helvB });
@@ -276,6 +256,9 @@ export async function onRequest(context) {
   }
 }
 
+// =================================================================
+// --- FIXED: Corrected wrapText function ---
+// =================================================================
 function wrapText(text, maxWidth, font, fontSize) {
   const words = text.trim().split(/\s+/);
   const lines = [];
@@ -287,32 +270,20 @@ function wrapText(text, maxWidth, font, fontSize) {
     const testWidth = font.widthOfTextAtSize(testLine, fontSize);
 
     if (testWidth > maxWidth && lineWords.length > 1) {
-      // Move the last word to next line
+      // The line is too wide, and it's not just one word.
+      // Pop the last word, save the line, and start a new line.
       const lastWord = lineWords.pop();
       lines.push(lineWords.join(' '));
       lineWords = [lastWord];
     }
+    // If testWidth > maxWidth and lineWords.length === 1,
+    // we let it be. The font-fitting loop will catch that
+    // this line is too wide and will trigger a font size shrink.
   }
 
-  // ✅ Final safety check — handle the last line if still too wide
-  if (lineWords.length) {
-    let testLine = lineWords.join(' ');
-    let testWidth = font.widthOfTextAtSize(testLine, fontSize);
-
-    while (testWidth > maxWidth && lineWords.length > 1) {
-      const lastWord = lineWords.pop();
-      testLine = lineWords.join(' ');
-      testWidth = font.widthOfTextAtSize(testLine, fontSize);
-      if (testWidth <= maxWidth) {
-        lines.push(testLine);
-        lineWords = [lastWord];
-        break;
-      }
-    }
-
-    if (lineWords.length) {
-      lines.push(lineWords.join(' '));
-    }
+  // Push the remaining words (the last line)
+  if (lineWords.length > 0) {
+    lines.push(lineWords.join(' '));
   }
 
   return lines;
