@@ -250,19 +250,39 @@ export async function onRequest(context) {
 
 /* ---------- Word wrap helper ---------- */
 function wrapText(text, maxWidth, font, fontSize) {
-  const words = text.split(" ");
+  const words = text.split(' ');
   const lines = [];
-  let line = "";
+  let line = '';
+
   for (const word of words) {
-    const test = line ? `${line} ${word}` : word;
-    const width = font.widthOfTextAtSize(test, fontSize);
-    if (width > maxWidth && line) {
-      lines.push(line);
+    const testLine = line + (line ? ' ' : '') + word;
+    const testWidth = font.widthOfTextAtSize(testLine, fontSize);
+
+    if (testWidth > maxWidth) {
+      if (line) {
+        // Push the line *without* the new word
+        lines.push(line);
+      }
+      // Start the new line with the current word
       line = word;
+
+      // Check if the single word *itself* is too long.
+      // The outer font-shrinking loop will handle this
+      // by shrinking the font until this word fits.
+      const wordWidth = font.widthOfTextAtSize(word, fontSize);
+      if (wordWidth > maxWidth) {
+        lines.push(line);
+        line = ''; // Clear line so it doesn't get pushed again
+      }
     } else {
-      line = test;
+      // Word fits, add it to the current line
+      line = testLine;
     }
   }
-  if (line) lines.push(line);
+
+  // Push any remaining text
+  if (line) {
+    lines.push(line);
+  }
   return lines;
 }
