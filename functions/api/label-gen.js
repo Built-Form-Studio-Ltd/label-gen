@@ -146,103 +146,85 @@ export async function onRequest(context) {
         });
 
 // --- DESCRIPTION (auto-fit + always centered) ---
-        textY -= 5; // position below SKU
-        
-        const safeBottom = y + 8; // space for NEW + country
-        const availableHeight = textY - safeBottom;
-        
-        // Restrict width to barcode area
-        const descBoxW = barcodeW;
-        const descX = barcodeX; // Barcode's left edge
-        
-        // Font size range
-        const minFont = 3.0;
-        const maxFont = 4.0;
-        let descSize = maxFont;
-        let descLines = [];
-        
-        function makeLines(size) {
-          // Use the (now fixed) wrapText function
-          return wrapText(desc.trim(), descBoxW, helv, size);
-        }
+textY -= 5; // position below SKU
 
-        // --- NEW FONT-FITTING LOOP ---
-        // Start from maxFont and shrink until it fits *both* width and height
-        for (let s = maxFont; s >= minFont; s -= 0.1) {
-          descSize = s;
-          descLines = makeLines(descSize);
+const safeBottom = y + 8; // space for NEW + country
+const availableHeight = textY - safeBottom;
 
-          // Check 1: Does it fit height?
-          const totalHeight = descLines.length * (descSize + 1.0);
-          if (totalHeight > availableHeight) {
-            continue; // Too tall, try smaller font
-          }
+// Restrict width to barcode area
+const descBoxW = barcodeW;
+const descX = barcodeX; // Barcode's left edge
 
-          // Check 2: Does it fit width?
-          let widest = 0;
-          for (const line of descLines) {
-            widest = Math.max(widest, helv.widthOfTextAtSize(line, descSize));
-          }
-          if (widest > descBoxW) {
-            continue; // Too wide, try smaller font
-          }
+const minFont = 3.0;
+const maxFont = 4.0;
+let descSize = maxFont;
+let descLines = [];
 
-          // If we get here, it fits both.
-          break;
-        }
-        // --- END NEW FONT-FITTING LOOP ---
-        // At this point, descLines and descSize are the best-fit
-        
-        // Draw ALL lines centered — with smart centering that stays within bounds
-        let drawY = textY;
-        for (const line of descLines) {
-          const actualWidth = helv.widthOfTextAtSize(line, descSize);
-          let centeredX = descX + (barcodeW - actualWidth) / 2;
-        
-          // --- Smart centering correction ---
-          const rightEdge = descX + barcodeW; // absolute right boundary of the barcode box
-          if (centeredX + actualWidth > rightEdge) {
-            // How much does it overflow beyond the right edge?
-            const overflow = (centeredX + actualWidth) - rightEdge;
-          
-            // Shift left only half of that overflow (for visual balance)
-            centeredX -= overflow / 2;
-          
-            // Clamp within bounds (safety)
-            if (centeredX < descX) centeredX = descX;
-            if (centeredX + actualWidth > rightEdge)
-              centeredX = rightEdge - actualWidth;
-          }
+// helper: wrap text respecting word boundaries
+function wrapTextToWidth(text, width, font, size) {
+  const words = text.trim().split(/\s+/);
+  const lines = [];
+  let currentLine = "";
 
-        
-          //   // Clamp again just to be safe
-          //   if (centeredX < descX) centeredX = descX;
-          //   if (centeredX + actualWidth > descX + barcodeW)
-          //     centeredX = descX + barcodeW - actualWidth;
-        
-        
-          page.drawText(line, {
-            x: centeredX-3,
-            y: drawY,
-            size: descSize,
-            font: helv,
-          });
-          drawY -= descSize + 1.0;
-        }
+  for (const word of words) {
+    const testLine = currentLine ? `${currentLine} ${word}` : word;
+    const testWidth = font.widthOfTextAtSize(testLine, size);
+    if (testWidth > width && currentLine) {
+      lines.push(currentLine);
+      currentLine = word;
+    } else {
+      currentLine = testLine;
+    }
+  }
+  if (currentLine) lines.push(currentLine);
+  return lines;
+}
 
-        
-        // Fallback for edge cases (this is now redundant but safe to keep)
-        if (!descLines.length) {
-          const fallback = desc.slice(0, 40);
-          const fallbackWidth = helv.widthOfTextAtSize(fallback, minFont);
-          const centeredX = descX + (barcodeW - fallbackWidth) / 2;
-          page.drawText(fallback, {
-            x: centeredX,
-            y: safeBottom + 10,
-            size: minFont,
-            font: helv,
-          });
-        }
+// --- NEW FONT-FITTING LOOP ---
+for (let s = maxFont; s >= minFont; s -= 0.1) {
+  const lines = wrapTextToWidth(desc, descBoxW, helv, s);
+  const totalHeight = lines.length * (s + 1);
+
+  // Check height fit
+  if (totalHeight > availableHeight) continue;
+
+  // Check width fit
+  const widest = Math.max(...lines.map(l => helv.widthOfTextAtSize(l, s)));
+  if (widest > descBoxW) continue;
+
+  // Fits both — accept
+  descSize = s;
+  descLines = lines;
+  break;
+}
+
+// --- DRAW TEXT ---
+let drawY = textY;
+for (const line of descLines) {
+  const actualWidth = helv.widthOfTextAtSize(line, descSize);
+  const centeredX = descX + (descBoxW - actualWidth) / 2;
+  page.drawText(line, {
+    x: centeredX,
+    y: drawY,
+    size: descSize,
+    font: helv,
+  });
+  drawY -= descSize + 1;
+}
+
+// Fallback in case of empty lines
+if (!descLines.length) {
+  const fallback = desc.slice(0, 40);
+  const fallbackWidth = helv.widthOfTextAtSize(fallback, minFont);
+  const centeredX = descX + (descBoxW - fallbackWidth) / 2;
+  page.drawText(fallback, {
+    x: centeredX,
+    y: safeBottom + 10,
+    size: minFont,
+    font: helv,
+  });
+}
+
         // --- NEW + COUNTRY ---
         const bottomY = y + 5;
         page.drawText("NEW", { x: x + 5, y: bottomY, size: 4, font: helvB });
