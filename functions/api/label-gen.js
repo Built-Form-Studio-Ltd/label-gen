@@ -156,8 +156,8 @@ export async function onRequest(context) {
         const descX = barcodeX; // Barcode's left edge
         
         // Font size range
-        const minFont = 3.5;
-        const maxFont = 4.5;
+        const minFont = 3.0;
+        const maxFont = 4.0;
         let descSize = maxFont;
         let descLines = [];
         
@@ -256,42 +256,42 @@ export async function onRequest(context) {
 function wrapText(text, maxWidth, font, fontSize) {
   const words = text.trim().split(/\s+/);
   const lines = [];
-
   let lineWords = [];
+
   for (const word of words) {
     lineWords.push(word);
+    const testLine = lineWords.join(' ');
+    const testWidth = font.widthOfTextAtSize(testLine, fontSize);
 
-    // Build a candidate line
+    if (testWidth > maxWidth && lineWords.length > 1) {
+      // Move the last word to next line
+      const lastWord = lineWords.pop();
+      lines.push(lineWords.join(' '));
+      lineWords = [lastWord];
+    }
+  }
+
+  // ✅ Final safety check — handle the last line if still too wide
+  if (lineWords.length) {
     let testLine = lineWords.join(' ');
     let testWidth = font.widthOfTextAtSize(testLine, fontSize);
 
-    // If the line is too wide, start moving words from the back
     while (testWidth > maxWidth && lineWords.length > 1) {
-      // Move the last word to the next line
       const lastWord = lineWords.pop();
       testLine = lineWords.join(' ');
       testWidth = font.widthOfTextAtSize(testLine, fontSize);
-
-      // Push the completed line
       if (testWidth <= maxWidth) {
         lines.push(testLine);
-        // Start next line with the overflow word
         lineWords = [lastWord];
         break;
       }
     }
 
-    // If single word exceeds width (like a very long word), just force it
-    if (lineWords.length === 1 && font.widthOfTextAtSize(lineWords[0], fontSize) > maxWidth) {
-      lines.push(lineWords[0]);
-      lineWords = [];
+    if (lineWords.length) {
+      lines.push(lineWords.join(' '));
     }
-  }
-
-  // Push whatever remains
-  if (lineWords.length) {
-    lines.push(lineWords.join(' '));
   }
 
   return lines;
 }
+
