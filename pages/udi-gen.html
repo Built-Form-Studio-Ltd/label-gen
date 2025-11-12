@@ -125,6 +125,17 @@
             </button>
         </form>
 
+        <!-- ✅ New Text Box and Copy Button -->
+        <div id="textBoxContainer" class="hidden mt-6 fade-in">
+          <div class="border border-gray-300 rounded-lg bg-gray-50 p-4 mb-2">
+            <pre id="barcodeText" class="whitespace-pre-wrap text-sm text-gray-700 font-mono"></pre>
+          </div>
+          <button id="copyBtn"
+            class="w-full bg-gray-700 text-white font-bold py-2 px-4 rounded-lg hover:bg-gray-800 transition">
+            Copy Text
+          </button>
+        </div>
+
         <!-- Download Button (hidden by default) -->
         <!-- UPDATED: Button styling -->
         <a id="downloadBtn"
@@ -192,7 +203,19 @@
             const previewContainer = document.getElementById('previewContainer');
             const previewImage = document.getElementById('previewImage');
             const canvas = document.getElementById('barcodeCanvas');
+
+            // ✅ New elements for the text box
+            const textBoxContainer = document.getElementById('textBoxContainer');
+            const barcodeText = document.getElementById('barcodeText');
+            const copyBtn = document.getElementById('copyBtn');
             
+            // ✅ Copy button logic
+            copyBtn.addEventListener('click', () => {
+              navigator.clipboard.writeText(barcodeText.textContent)
+                .then(() => showToast("✅ Text copied!"))
+                .catch(() => showToast("❌ Failed to copy", "red"));
+            });
+
             // REMOVED: Old toast elements
             // const toastNotification = document.getElementById('toastNotification');
             // let toastTimer;
@@ -264,6 +287,11 @@
                     // Show the preview image
                     previewImage.src = pngUrl;
                     previewContainer.classList.remove('hidden');
+                    // ✅ Update and show the text box
+                    barcodeText.textContent =
+                      `(01)${gtin}\n(11)${mfgDate}\n(17)${expDate}\n(10)${lot}`;
+                    textBoxContainer.classList.remove('hidden');
+
 
                 } catch (err) {
                     // --- Error ---
