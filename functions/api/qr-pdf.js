@@ -43,7 +43,7 @@ export async function onRequest(context) {
     }
 
     // --- Upscale QR buffer (so PDF sees a big image) ---
-    const scale = 4; // 4× bigger physically
+    const scale = 3; // 4× bigger physically
     const bigW = smallSize * scale;
     const bigH = smallSize * scale;
     const big = new Uint8ClampedArray(bigW * bigH * 4);
@@ -81,7 +81,7 @@ export async function onRequest(context) {
     });
 
     // --- ID text below QR ---
-    const textSize = 14;
+    const textSize = 24;
     const textWidth = font.widthOfTextAtSize(id, textSize);
     page.drawText(id, {
       x: (width - textWidth) / 2,
