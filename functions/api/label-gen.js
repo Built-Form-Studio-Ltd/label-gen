@@ -254,40 +254,44 @@ export async function onRequest(context) {
 }
 
 function wrapText(text, maxWidth, font, fontSize) {
-  const words = text.split(' ');
+  const words = text.trim().split(/\s+/);
   const lines = [];
-  let line = '';
 
+  let lineWords = [];
   for (const word of words) {
-    const testLine = line ? `${line} ${word}` : word;
-    const testWidth = font.widthOfTextAtSize(testLine, fontSize);
+    lineWords.push(word);
 
-    if (testWidth > maxWidth) {
-      if (line) lines.push(line);
-      const wordWidth = font.widthOfTextAtSize(word, fontSize);
-      
-      if (wordWidth > maxWidth) {
-        // Split the long word
-        let chunk = '';
-        for (const ch of word) {
-          const testChunk = chunk + ch;
-          if (font.widthOfTextAtSize(testChunk, fontSize) > maxWidth) {
-            lines.push(chunk);
-            chunk = ch;
-          } else {
-            chunk = testChunk;
-          }
-        }
-        if (chunk) line = chunk;
-        else line = '';
-      } else {
-        line = word;
+    // Build a candidate line
+    let testLine = lineWords.join(' ');
+    let testWidth = font.widthOfTextAtSize(testLine, fontSize);
+
+    // If the line is too wide, start moving words from the back
+    while (testWidth > maxWidth && lineWords.length > 1) {
+      // Move the last word to the next line
+      const lastWord = lineWords.pop();
+      testLine = lineWords.join(' ');
+      testWidth = font.widthOfTextAtSize(testLine, fontSize);
+
+      // Push the completed line
+      if (testWidth <= maxWidth) {
+        lines.push(testLine);
+        // Start next line with the overflow word
+        lineWords = [lastWord];
+        break;
       }
-    } else {
-      line = testLine;
+    }
+
+    // If single word exceeds width (like a very long word), just force it
+    if (lineWords.length === 1 && font.widthOfTextAtSize(lineWords[0], fontSize) > maxWidth) {
+      lines.push(lineWords[0]);
+      lineWords = [];
     }
   }
 
-  if (line) lines.push(line);
+  // Push whatever remains
+  if (lineWords.length) {
+    lines.push(lineWords.join(' '));
+  }
+
   return lines;
 }
