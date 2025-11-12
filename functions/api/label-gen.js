@@ -200,18 +200,18 @@ export async function onRequest(context) {
           let centeredX = descX + (barcodeW - actualWidth) / 2;
         
           // --- Smart centering correction ---
-          if (actualWidth > barcodeW) {
+          if (centeredX + actualWidth > barcodeW) {
             // Find how much it overflows (total width beyond allowed)
-            const overflow = actualWidth - barcodeW;
+            const overflow = centeredX + actualWidth - barcodeW;
         
             // Shift left only half the overflow (to keep visual balance)
             centeredX = descX - overflow / 2;
         
-            // Clamp again just to be safe
-            if (centeredX < descX) centeredX = descX;
-            if (centeredX + actualWidth > descX + barcodeW)
-              centeredX = descX + barcodeW - actualWidth;
-          }
+          //   // Clamp again just to be safe
+          //   if (centeredX < descX) centeredX = descX;
+          //   if (centeredX + actualWidth > descX + barcodeW)
+          //     centeredX = descX + barcodeW - actualWidth;
+          // }
         
           page.drawText(line, {
             x: centeredX,
