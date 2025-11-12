@@ -157,7 +157,7 @@ export async function onRequest(context) {
         
         // Font size range
         const minFont = 3.5;
-        const maxFont = 4.5;
+        const maxFont = 4.0;
         let descSize = maxFont;
         let descLines = [];
         
@@ -170,7 +170,7 @@ export async function onRequest(context) {
           descLines = makeLines(descSize);
           const totalHeight = descLines.length * (descSize + 1.0);
           if (totalHeight <= availableHeight) break;
-          descSize -= 0.2;
+          descSize -= 0.1;
         }
         
         // Extra safety: shrink if any single line is still too wide
