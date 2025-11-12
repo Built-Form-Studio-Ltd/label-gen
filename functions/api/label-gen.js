@@ -222,7 +222,7 @@ export async function onRequest(context) {
         
         
           page.drawText(line, {
-            x: centeredX,
+            x: centeredX-3,
             y: drawY,
             size: descSize,
             font: helv,
