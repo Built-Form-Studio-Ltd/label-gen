@@ -205,7 +205,7 @@ export async function onRequest(context) {
             const overflow = centeredX + actualWidth - barcodeW;
         
             // Shift left only half the overflow (to keep visual balance)
-            centeredX = descX - overflow / 2;
+            centeredX = centeredX - overflow / 2;
         
           //   // Clamp again just to be safe
           //   if (centeredX < descX) centeredX = descX;
