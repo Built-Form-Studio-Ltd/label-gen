@@ -255,32 +255,33 @@ function wrapText(text, maxWidth, font, fontSize) {
   let line = '';
 
   for (const word of words) {
+    // Add a space if the line is not empty
     const testLine = line + (line ? ' ' : '') + word;
     const testWidth = font.widthOfTextAtSize(testLine, fontSize);
 
     if (testWidth > maxWidth) {
       if (line) {
-        // Push the line *without* the new word
+        // The new word doesn't fit, so push the line *without* the new word
         lines.push(line);
       }
       // Start the new line with the current word
       line = word;
 
-      // Check if the single word *itself* is too long.
-      // The outer font-shrinking loop will handle this
-      // by shrinking the font until this word fits.
+      // Now, check if this single word *itself* is too long
       const wordWidth = font.widthOfTextAtSize(word, fontSize);
       if (wordWidth > maxWidth) {
+        // This word is too long. Push it to its own line
+        // (the outer font-shrinking loop will handle shrinking it)
         lines.push(line);
-        line = ''; // Clear line so it doesn't get pushed again
+        line = ''; // Clear the line so it doesn't get pushed again
       }
     } else {
-      // Word fits, add it to the current line
+      // The word fits, so add it to the current line
       line = testLine;
     }
   }
 
-  // Push any remaining text
+  // Push any remaining text (the last line)
   if (line) {
     lines.push(line);
   }
