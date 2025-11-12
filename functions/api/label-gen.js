@@ -152,7 +152,7 @@ export async function onRequest(context) {
         const availableHeight = textY - safeBottom;
         
         // Restrict width to barcode area
-        const descBoxW = barcodeW;
+        const descBoxW = barcodeW-1;
         const descX = barcodeX; // This is the barcode's left edge
         
         // Font size range
