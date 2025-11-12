@@ -1,5 +1,5 @@
 import { PDFDocument, StandardFonts, rgb } from "pdf-lib";
-import qrcode from "qrcode"; // Make sure you have this library
+import * as qrcode from "qrcode";
 
 /* ---------- Corrected QR Code Handler ---------- */
 export async function onRequest(context) {
