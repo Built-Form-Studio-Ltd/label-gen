@@ -40,16 +40,16 @@ export async function onRequest(context) {
 
     // Create the PDF
     const pdfDoc = await PDFDocument.create();
-    const page = pdfDoc.addPage([595.28, 841.89]); // A4 size
+    const page = pdfDoc.addPage([512, 512]); // small square sticker page
     const font = await pdfDoc.embedFont(StandardFonts.Helvetica);
 
     const qrImage = await pdfDoc.embedPng(await encodeToPNG(qrCanvas, qrSize, qrSize));
 
     // Determine layout positions
-    const qrDisplaySize = 250; // make it big and centred
+    const qrDisplaySize = 450; // make it big and centred
     const { width, height } = page.getSize();
     const qrX = (width - qrDisplaySize) / 2;
-    const qrY = (height - qrDisplaySize) / 2 + 40;
+    const qrY = (height - qrDisplaySize) / 2 + 25;
 
     // Draw QR in the middle
     page.drawImage(qrImage, {
