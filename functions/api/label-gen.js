@@ -145,57 +145,62 @@ export async function onRequest(context) {
           font: helvB
         });
 
-// --- DESCRIPTION (auto-fit + left-aligned within barcode width) ---
+// --- DESCRIPTION (auto-fit + always centered) ---
         textY -= 5; // position below SKU
         
         const safeBottom = y + 8; // space for NEW + country
         const availableHeight = textY - safeBottom;
         
         // Restrict width to barcode area
-        const descBoxW = barcodeW-1;
-        const descX = barcodeX; // This is the barcode's left edge
+        const descBoxW = barcodeW;
+        const descX = barcodeX; // Barcode's left edge
         
         // Font size range
         const minFont = 3.5;
-        const maxFont = 4.0;
+        const maxFont = 4.5;
         let descSize = maxFont;
         let descLines = [];
         
         function makeLines(size) {
+          // Use the (now fixed) wrapText function
           return wrapText(desc.trim(), descBoxW, helv, size);
         }
-        
-        // Shrink font until text fits in height
-        while (descSize >= minFont) {
+
+        // --- NEW FONT-FITTING LOOP ---
+        // Start from maxFont and shrink until it fits *both* width and height
+        for (let s = maxFont; s >= minFont; s -= 0.1) {
+          descSize = s;
           descLines = makeLines(descSize);
+
+          // Check 1: Does it fit height?
           const totalHeight = descLines.length * (descSize + 1.0);
-          if (totalHeight <= availableHeight) break;
-          descSize -= 0.1;
-        }
-        
-        // Extra safety: shrink if any single line is still too wide
-        // (Your wrapText function should prevent this, but this is good defense)
-        let widest = 0;
-        for (const line of descLines) {
-          widest = Math.max(widest, helv.widthOfTextAtSize(line, descSize));
-        }
-        while (widest > descBoxW && descSize > minFont) {
-          descSize -= 0.2;
-          // Re-wrap and re-check
-          descLines = makeLines(descSize);
-          widest = 0;
+          if (totalHeight > availableHeight) {
+            continue; // Too tall, try smaller font
+          }
+
+          // Check 2: Does it fit width?
+          let widest = 0;
           for (const line of descLines) {
             widest = Math.max(widest, helv.widthOfTextAtSize(line, descSize));
           }
+          if (widest > descBoxW) {
+            continue; // Too wide, try smaller font
+          }
+
+          // If we get here, it fits both.
+          break;
         }
+        // --- END NEW FONT-FITTING LOOP ---
+        // At this point, descLines and descSize are the best-fit
         
-        // Draw LEFT-ALIGNED lines under barcode
+        // Draw ALL lines centered
         let drawY = textY;
         for (const line of descLines) {
-          // const actualWidth = helv.widthOfTextAtSize(line, descSize); // No longer needed
-          // const centeredX = descX + (barcodeW - actualWidth) / 2;   // This was the problem
+          const actualWidth = helv.widthOfTextAtSize(line, descSize);
+          const centeredX = descX + (barcodeW - actualWidth) / 2;
+          
           page.drawText(line, {
-            x: descX, // <-- THIS IS THE FIX. Always start at the barcode's left edge.
+            x: centeredX,
             y: drawY,
             size: descSize,
             font: helv,
@@ -203,13 +208,13 @@ export async function onRequest(context) {
           drawY -= descSize + 1.0;
         }
         
-        // Fallback for edge cases (extremely long desc)
+        // Fallback for edge cases (this is now redundant but safe to keep)
         if (!descLines.length) {
           const fallback = desc.slice(0, 40);
-          // const fallbackWidth = helv.widthOfTextAtSize(fallback, minFont); // No longer needed
-          // const centeredX = descX + (barcodeW - fallbackWidth) / 2;      // This was the problem
+          const fallbackWidth = helv.widthOfTextAtSize(fallback, minFont);
+          const centeredX = descX + (barcodeW - fallbackWidth) / 2;
           page.drawText(fallback, {
-            x: descX, // <-- THIS IS THE FIX. Always start at the barcode's left edge.
+            x: centeredX,
             y: safeBottom + 10,
             size: minFont,
             font: helv,
