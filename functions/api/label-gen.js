@@ -222,7 +222,7 @@ export async function onRequest(context) {
         
         
           page.drawText(line, {
-            x: centeredX,
+            x: centeredX-2,
             y: drawY,
             size: descSize,
             font: helv,
@@ -237,7 +237,7 @@ export async function onRequest(context) {
           const fallbackWidth = helv.widthOfTextAtSize(fallback, minFont);
           const centeredX = descX + (barcodeW - fallbackWidth) / 2;
           page.drawText(fallback, {
-            x: centeredX,
+            x: centeredX-2,
             y: safeBottom + 10,
             size: minFont,
             font: helv,
