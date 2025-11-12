@@ -124,7 +124,7 @@ Jfa - Cerotti assortiti lavabili (6 dimensioni), 100 cerotti per scatola
         const blobUrl = URL.createObjectURL(blob);
         const a = document.createElement("a");
         a.href = blobUrl;
-        a.download = `labels_${document.getElementById("fnsku").value || "label"}.pdf`;
+        a.download = `labels_${document.getElementById("fnsku").value.trim() || "label"}.pdf`;
         a.click();
         URL.revokeObjectURL(blobUrl);
 
