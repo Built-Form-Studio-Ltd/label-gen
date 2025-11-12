@@ -1,0 +1,231 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GS1 DataMatrix Generator</title>
+    <!-- 1. Load Tailwind CSS for styling -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- 2. Load the client-side bwip-js library -->
+    <script src="https://cdn.jsdelivr.net/npm/bwip-js"></script>
+    
+    <!-- 3. Load Inter font -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+        /* Hide the canvas visually but keep it accessible for drawing */
+        #barcodeCanvas {
+            position: absolute;
+            left: -9999px;
+            top: -9999px;
+        }
+    </style>
+</head>
+<body class="bg-gray-100 min-h-screen flex items-center justify-center p-4">
+
+    <div class="bg-white p-8 rounded-xl shadow-xl w-full max-w-lg">
+        
+        <!-- Header -->
+        <h1 class="text-3xl font-bold text-gray-900 mb-2 text-center">
+            GS1 DataMatrix Generator
+        </h1>
+        <p class="text-gray-600 mb-8 text-center">
+            Enter the UDI components to generate a barcode.
+        </p>
+
+        <!-- Barcode Form -->
+        <form id="barcodeForm" class="space-y-6">
+            
+            <!-- UDI Component Inputs -->
+            <div class="grid grid-cols-2 gap-4">
+                <!-- GTIN -->
+                <div>
+                    <label for="gtinInput" class="block text-sm font-medium text-gray-700 mb-1">
+                        (01) GTIN
+                    </label>
+                    <input type="text" id="gtinInput"
+                           class="w-full px-4 py-2 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                           value="06973864851474"
+                           placeholder="e.g., 06973864851474">
+                </div>
+
+                <!-- LOT Number -->
+                <div>
+                    <label for="lotInput" class="block text-sm font-medium text-gray-700 mb-1">
+                        (10) LOT Number
+                    </label>
+                    <input type="text" id="lotInput"
+                           class="w-full px-4 py-2 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                           value="1434001"
+                           placeholder="e.g., 1434001">
+                </div>
+
+                <!-- Manufacturing Date -->
+                <div>
+                    <label for="mfgDateInput" class="block text-sm font-medium text-gray-700 mb-1">
+                        (11) Manufacturing Date
+                    </label>
+                    <input type="text" id="mfgDateInput"
+                           class="w-full px-4 py-2 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                           value="251201"
+                           placeholder="YYMMDD">
+                </div>
+
+                <!-- Expiry Date -->
+                <div>
+                    <label for="expDateInput" class="block text-sm font-medium text-gray-700 mb-1">
+                        (17) Expiry Date
+                    </label>
+                    <input type="text" id="expDateInput"
+                           class="w-full px-4 py-2 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                           value="301101"
+                           placeholder="YYMMDD">
+                </div>
+            </div>
+            
+            <!-- Options (Scale & Padding) -->
+            <!-- This section is now removed
+            <div class="grid grid-cols-2 gap-4">
+                <div>
+...
+                </div>
+            </div>
+            -->
+            
+            <!-- Generate Button -->
+            <button type="submit"
+                    class="w-full bg-blue-600 text-white py-3 px-4 rounded-lg font-semibold shadow-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition duration-200">
+                Generate Barcode
+            </button>
+        </form>
+
+        <!-- Download Button (hidden by default) -->
+        <a id="downloadBtn"
+           class="hidden w-full bg-green-600 text-white py-3 px-4 rounded-lg font-semibold shadow-md hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 transition duration-200 text-center mt-4 block">
+           Download as PNG
+        </a>
+        
+        <!-- Error Message Area (hidden by default) -->
+        <div id="errorMessage"
+             class="hidden mt-4 text-red-700 bg-red-100 border border-red-400 p-4 rounded-lg">
+        </div>
+        
+        <!-- Preview Image -->
+        <div id="previewContainer" class="mt-6 border border-gray-200 rounded-lg p-4 justify-center items-center bg-gray-50 min-h-[150px] hidden">
+            <img id="previewImage" alt="Barcode Preview" class="mx-auto block max-w-full">
+        </div>
+
+    </div>
+
+    <!-- 
+      Canvas Element:
+      This is where bwip-js will draw the barcode.
+      We hide it off-screen so the user only sees the preview image.
+    -->
+    <canvas id="barcodeCanvas"></canvas>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            // Get all the elements we need
+            const form = document.getElementById('barcodeForm');
+            // Get the new input fields
+            const gtinInput = document.getElementById('gtinInput');
+            const mfgDateInput = document.getElementById('mfgDateInput');
+            const expDateInput = document.getElementById('expDateInput');
+            const lotInput = document.getElementById('lotInput');
+            
+            // Removed scaleInput and paddingInput
+            
+            const downloadBtn = document.getElementById('downloadBtn');
+            const errorMessage = document.getElementById('errorMessage');
+            const previewContainer = document.getElementById('previewContainer');
+            const previewImage = document.getElementById('previewImage');
+            const canvas = document.getElementById('barcodeCanvas');
+
+            // Listen for the form submission
+            form.addEventListener('submit', (e) => {
+                e.preventDefault(); // Stop the form from reloading the page
+                
+                // Hide old results and errors
+                downloadBtn.classList.add('hidden');
+                errorMessage.classList.add('hidden');
+                previewContainer.classList.add('hidden');
+                errorMessage.textContent = '';
+
+                // Get values from the form and remove spaces as requested
+                const gtin = gtinInput.value.replaceAll(" ", "");
+                const mfgDate = mfgDateInput.value.replaceAll(" ", "");
+                const expDate = expDateInput.value.replaceAll(" ", "");
+                const lot = lotInput.value.replaceAll(" ", "");
+                
+                // Set fixed scale and padding
+                const scale = 6;
+                const padding = 2;
+                
+                // NEW: Validate that all fields are filled
+                if (!gtin || !mfgDate || !expDate || !lot) {
+                    errorMessage.textContent = 'Please fill out all four fields (GTIN, Mfg. Date, Exp. Date, and LOT Number).';
+                    errorMessage.classList.remove('hidden');
+                    return;
+                }
+
+                // NEW: Construct the UDI string based on the formula
+                // FIX: Added parentheses around AIs (01, 11, 17, 10) for GS1 parsing.
+                const udiText = `(01)${gtin}(11)${mfgDate}(17)${expDate}(10)${lot}`;
+
+                // --- Generate the Barcode ---
+                try {
+                    // Use bwipjs.toCanvas to draw the barcode
+                    // We pass the canvas element directly
+                    bwipjs.toCanvas(canvas, {
+                        bcid: 'gs1datamatrix', // GS1 DataMatrix symbology
+                        text: udiText,        // The NEWLY CONSTRUCTED UDI string
+                        scale: scale,         // Scale factor
+                        padding: padding,     // Padding in pixels
+                        backgroundcolor: 'FFFFFF',
+                        includetext: false,   // Don't include human-readable text
+                        parse: true           // CRITICAL: Parse for GS1 application identifiers
+                    });
+
+                    // --- Success ---
+                    
+                    // Convert the canvas drawing to a PNG data URL
+                    const pngUrl = canvas.toDataURL('image/png');
+
+                    // Set the download button's href and filename
+                    downloadBtn.href = pngUrl;
+                    downloadBtn.download = `gs1datamatrix_${Date.now()}.png`;
+                    
+                    // Show the download button
+                    downloadBtn.classList.remove('hidden');
+
+                    // Show the preview image
+                    previewImage.src = pngUrl;
+                    previewContainer.classList.remove('hidden');
+
+                } catch (err) {
+                    // --- Error ---
+                    console.error(err);
+                    let userError = err.message || 'An unknown error occurred.';
+                    
+                    // Provide a more user-friendly error
+                    if (userError.includes('is not a valid GS1 DataMatrix')) {
+                        userError = 'Invalid GS1 DataMatrix string. Please check your input.';
+                    } else if (userError.includes('bwipp.gs1datamatrix')) {
+                         userError = 'The input string is not a valid GS1 DataMatrix. Please check the format.';
+                    } else if (userError.includes('must be 6 digits')) {
+                        userError = 'A date is formatted incorrectly. Please use the YYMMDD format for dates.';
+                    }
+                    
+                    errorMessage.textContent = `Error: ${userError}`;
+                    errorMessage.classList.remove('hidden');
+                }
+            });
+        });
+    </script>
+
+</body>
+</html>
