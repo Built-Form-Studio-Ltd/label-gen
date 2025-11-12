@@ -28,20 +28,29 @@
         transform: translateY(-10px);
       }
     }
+    
+    /* Utility classes for validation styling */
+    .form-input-error {
+      border-color: #ef4444 !important; /* red-500 */
+      box-shadow: 0 0 0 2px #f87171; /* ring-red-400 equivalent */
+    }
+    .form-input-default {
+      border-color: #d1d5db; /* gray-300 */
+    }
   </style>
 </head>
 <body class="h-full flex items-center justify-center p-6 bg-gray-100 font-sans">
   <div class="w-full max-w-lg bg-white rounded-xl shadow-2xl p-8 md:p-10 relative">
     <h1 class="text-3xl font-bold text-center text-gray-800 mb-8">Label Generator</h1>
 
-    <!-- ✅ Toast container (hidden by default) -->
     <div id="toast" class="hidden absolute top-4 left-1/2 -translate-x-1/2 bg-green-600 text-white px-6 py-3 rounded-lg shadow-lg font-medium"></div>
 
     <form id="labelForm" class="space-y-6">
       <div>
         <label class="block text-sm font-semibold text-gray-700 mb-1.5">FNSKU</label>
         <input id="fnsku" name="fnsku" value="X002ETPLQL"
-          class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500" />
+          class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 transition-all" />
+        <p id="fnskuError" class="text-red-600 text-sm mt-1.5 hidden"></p>
       </div>
 
       <div>
@@ -88,7 +97,6 @@ Jfa - Cerotti assortiti lavabili (6 dimensioni), 100 cerotti per scatola
       toast.className = `absolute top-4 left-1/2 -translate-x-1/2 bg-${color}-600 text-white px-6 py-3 rounded-lg shadow-lg font-medium fade-in`;
       toast.classList.remove("hidden");
 
-      // Hide after 3 seconds with fade-out
       setTimeout(() => {
         toast.classList.replace("fade-in", "fade-out");
         setTimeout(() => {
@@ -97,17 +105,82 @@ Jfa - Cerotti assortiti lavabili (6 dimensioni), 100 cerotti per scatola
       }, 3000);
     }
 
+    // --- FNSKU VALIDATION LOGIC ---
+
+    const fnskuRegex = /^X0[A-Z0-9]{8}$/;
+    const fnskuInput = document.getElementById("fnsku");
+    const fnskuError = document.getElementById("fnskuError");
+
+    // ✅ UPDATED: This function now only shows an error if
+    // the input is exactly 10 characters long but fails the regex test.
+    function validateFnskuInput() {
+      const fnskuValue = fnskuInput.value.trim();
+
+      if (fnskuValue.length === 10) {
+        // It's 10 characters, so now we test the format
+        if (fnskuRegex.test(fnskuValue)) {
+          // Case 1: 10 chars AND valid format
+          fnskuInput.classList.remove("border-red-500", "ring-2", "ring-red-500");
+          fnskuInput.classList.add("border-gray-300", "focus:ring-blue-500");
+          fnskuError.classList.add("hidden");
+          fnskuError.textContent = "";
+        } else {
+          // Case 2: 10 chars AND INVALID format
+          fnskuInput.classList.add("border-red-500", "ring-2", "ring-red-500");
+          fnskuInput.classList.remove("border-gray-300", "focus:ring-blue-500");
+          fnskuError.textContent = "Invalid format. Must be X0 followed by 8 uppercase letters/numbers.";
+          fnskuError.classList.remove("hidden");
+        }
+      } else {
+        // Case 3: Not 10 characters long (could be empty, 5, or 12, etc.)
+        // No error is shown, as requested.
+        fnskuInput.classList.remove("border-red-500", "ring-2", "ring-red-500");
+        fnskuInput.classList.add("border-gray-300", "focus:ring-blue-500");
+        fnskuError.classList.add("hidden");
+        fnskuError.textContent = "";
+      }
+    }
+
+    // Add real-time validation on input
+    fnskuInput.addEventListener("input", validateFnskuInput);
+    
+    // --- FORM SUBMISSION LOGIC ---
+    // (This part remains unchanged, as it must be strict on submit)
     document.getElementById("labelForm").addEventListener("submit", async (e) => {
       e.preventDefault();
+      
+      const fnskuValue = fnskuInput.value.trim();
 
-      // Collect and safely encode parameters
+      // Final validation check on submit
+      if (!fnskuRegex.test(fnskuValue)) {
+        showToast("❌ Invalid FNSKU. Please check the form.", "red");
+        
+        fnskuInput.classList.add("border-red-500", "ring-2", "ring-red-500");
+        fnskuInput.classList.remove("border-gray-300", "focus:ring-blue-500");
+
+        if (fnskuValue === "") {
+          fnskuError.textContent = "FNSKU is required.";
+        } else {
+          fnskuError.textContent = "Must be 10 characters, starting with X0 (e.g., X001ABC123)";
+        }
+        fnskuError.classList.remove("hidden");
+        
+        return; // Stop the submission
+      }
+      
+      // Clear any lingering error styles on successful submit
+      fnskuInput.classList.remove("border-red-500", "ring-2", "ring-red-500");
+      fnskuInput.classList.add("border-gray-300", "focus:ring-blue-500");
+      fnskuError.classList.add("hidden");
+      fnskuError.textContent = "";
+
+      // ... (Rest of the fetch/download logic) ...
       const params = new URLSearchParams();
-      params.set("fnsku", document.getElementById("fnsku").value.trim());
+      params.set("fnsku", fnskuValue);
       params.set("sku", document.getElementById("sku").value.trim());
       params.set("desc", document.getElementById("desc").value.trim());
       params.set("country", document.getElementById("country").value.trim());
 
-      // Build encoded URL
       const url = `/api/label-gen?${params.toString()}`;
 
       try {
@@ -119,16 +192,14 @@ Jfa - Cerotti assortiti lavabili (6 dimensioni), 100 cerotti per scatola
           return;
         }
 
-        // Download PDF automatically
         const blob = await res.blob();
         const blobUrl = URL.createObjectURL(blob);
         const a = document.createElement("a");
         a.href = blobUrl;
-        a.download = `labels_${document.getElementById("fnsku").value.trim() || "label"}.pdf`;
+        a.download = `labels_${fnskuValue}.pdf`;
         a.click();
         URL.revokeObjectURL(blobUrl);
 
-        // ✅ Show success toast
         showToast("✅ Label PDF generated successfully!");
       } catch (err) {
         showToast("❌ Failed to fetch PDF", "red");
