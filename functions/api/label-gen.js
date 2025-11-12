@@ -200,18 +200,26 @@ export async function onRequest(context) {
           let centeredX = descX + (barcodeW - actualWidth) / 2;
         
           // --- Smart centering correction ---
-          if (centeredX + actualWidth > barcodeW) {
-            // Find how much it overflows (total width beyond allowed)
-            const overflow = centeredX + actualWidth - barcodeW;
-        
-            // Shift left only half the overflow (to keep visual balance)
-            centeredX = centeredX - overflow / 2;
+          const rightEdge = descX + barcodeW; // absolute right boundary of the barcode box
+          if (centeredX + actualWidth > rightEdge) {
+            // How much does it overflow beyond the right edge?
+            const overflow = (centeredX + actualWidth) - rightEdge;
+          
+            // Shift left only half of that overflow (for visual balance)
+            centeredX -= overflow / 2;
+          
+            // Clamp within bounds (safety)
+            if (centeredX < descX) centeredX = descX;
+            if (centeredX + actualWidth > rightEdge)
+              centeredX = rightEdge - actualWidth;
+          }
+
         
           //   // Clamp again just to be safe
           //   if (centeredX < descX) centeredX = descX;
           //   if (centeredX + actualWidth > descX + barcodeW)
           //     centeredX = descX + barcodeW - actualWidth;
-           }
+        }
         
           page.drawText(line, {
             x: centeredX,
