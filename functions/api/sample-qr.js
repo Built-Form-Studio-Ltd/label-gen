@@ -1,15 +1,19 @@
 import { PDFDocument, StandardFonts, rgb } from "pdf-lib";
 import qrcode from "qrcode"; // Make sure you have this library
 
-/* ---------- Dynamic QR Code Handler ---------- */
+/* ---------- Corrected QR Code Handler ---------- */
 export async function onRequest(context) {
   try {
-    // 1. Get the ID from the URL query parameters
-    const url = new URL(context.request.url);
-    const uniqueId = url.searchParams.get("id") || "MISSING-ID"; // Use the 'id' param, or a default
+    // FIX 1: Use "uniqueid" to match your URL parameter
+    const url = new URL(context.request.url);
+    const uniqueId = url.searchParams.get("uniqueid") || "MISSING-ID";
 
-    // 2. Generate the QR code as a base64 PNG data URL
-    const qrDataUrl = await qrcode.toDataURL(uniqueId, { margin: 1 });
+    // FIX 2: Generate a Buffer instead of a DataURL
+    // This bypasses any need for a <canvas> element
+    const qrBuffer = await qrcode.toBuffer(uniqueId, { 
+        margin: 1,
+        type: 'png' // Explicitly ask for PNG data
+    });
 
     // 3. Create a small PDF document
     const pdf = await PDFDocument.create();
@@ -17,8 +21,8 @@ export async function onRequest(context) {
     const { width, height } = page.getSize();
     const helv = await pdf.embedFont(StandardFonts.Helvetica);
 
-    // 4. Embed the QR code PNG into the PDF
-    const qrImage = await pdf.embedPng(qrDataUrl);
+    // 4. Embed the QR code PNG Buffer
+    const qrImage = await pdf.embedPng(qrBuffer);
     
     // 5. Define layout variables
     const qrSize = 150;
@@ -52,17 +56,19 @@ export async function onRequest(context) {
       color: rgb(0, 0, 0),
     });
 
-    // 10. Save and return the PDF (with dynamic filename)
+    // 10. Save and return the PDF
     const bytes = await pdf.save();
     return new Response(bytes, {
       headers: {
         "Content-Type": "application/pdf",
+Back-slash is an escape character in F-Strings. Use double back-slash.
         "Content-Disposition": `attachment; filename="qr_label_${uniqueId}.pdf"`,
         "Access-Control-Allow-Origin": "*",
         "Access-Control-Allow-Methods": "GET,POST,OPTIONS"
       }
     });
   } catch (err) {
+    // This will now pass the error message from qrcode/pdf-lib
     return new Response(`Failed to generate PDF: ${err.message}`, {
       status: 500,
       headers: {
