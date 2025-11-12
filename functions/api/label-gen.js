@@ -211,7 +211,7 @@ export async function onRequest(context) {
           //   if (centeredX < descX) centeredX = descX;
           //   if (centeredX + actualWidth > descX + barcodeW)
           //     centeredX = descX + barcodeW - actualWidth;
-          // }
+           }
         
           page.drawText(line, {
             x: centeredX,
