@@ -253,42 +253,41 @@ export async function onRequest(context) {
   }
 }
 
-/* ---------- Word wrap helper ---------- */
 function wrapText(text, maxWidth, font, fontSize) {
   const words = text.split(' ');
   const lines = [];
   let line = '';
 
   for (const word of words) {
-    // Add a space if the line is not empty
-    const testLine = line + (line ? ' ' : '') + word;
+    const testLine = line ? `${line} ${word}` : word;
     const testWidth = font.widthOfTextAtSize(testLine, fontSize);
 
     if (testWidth > maxWidth) {
-      if (line) {
-        // The new word doesn't fit, so push the line *without* the new word
-        lines.push(line);
-      }
-      // Start the new line with the current word
-      line = word;
-
-      // Now, check if this single word *itself* is too long
+      if (line) lines.push(line);
       const wordWidth = font.widthOfTextAtSize(word, fontSize);
+      
       if (wordWidth > maxWidth) {
-        // This word is too long. Push it to its own line
-        // (the outer font-shrinking loop will handle shrinking it)
-        lines.push(line);
-        line = ''; // Clear the line so it doesn't get pushed again
+        // Split the long word
+        let chunk = '';
+        for (const ch of word) {
+          const testChunk = chunk + ch;
+          if (font.widthOfTextAtSize(testChunk, fontSize) > maxWidth) {
+            lines.push(chunk);
+            chunk = ch;
+          } else {
+            chunk = testChunk;
+          }
+        }
+        if (chunk) line = chunk;
+        else line = '';
+      } else {
+        line = word;
       }
     } else {
-      // The word fits, so add it to the current line
       line = testLine;
     }
   }
 
-  // Push any remaining text (the last line)
-  if (line) {
-    lines.push(line);
-  }
+  if (line) lines.push(line);
   return lines;
 }
