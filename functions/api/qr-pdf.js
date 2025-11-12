@@ -23,7 +23,7 @@ export async function onRequest(context) {
     qr.make();
 
     const moduleCount = qr.getModuleCount();
-    const moduleSize = 10; // block size before upscale
+    const moduleSize = 8; // block size before upscale
     const smallSize = moduleCount * moduleSize;
 
     // --- Build RGBA buffer ---
@@ -43,7 +43,7 @@ export async function onRequest(context) {
     }
 
     // --- Upscale QR buffer (so PDF sees a big image) ---
-    const scale = 3; // 4× bigger physically
+    const scale = 2; 
     const bigW = smallSize * scale;
     const bigH = smallSize * scale;
     const big = new Uint8ClampedArray(bigW * bigH * 4);
@@ -68,7 +68,7 @@ export async function onRequest(context) {
     const qrImage = await pdfDoc.embedPng(await encodeToPNG(big, bigW, bigH));
 
     // --- Centre layout ---
-    const qrDisplaySize = 420;
+    const qrDisplaySize = 350;
     const { width, height } = page.getSize();
     const qrX = (width - qrDisplaySize) / 2;
     const qrY = (height - qrDisplaySize) / 2 + 25;
