@@ -107,7 +107,7 @@ Jfa - Cerotti assortiti lavabili (6 dimensioni), 100 cerotti per scatola
 
     // --- FNSKU VALIDATION LOGIC ---
 
-    const fnskuRegex = /^X0[A-Z0-9]{8}$/;
+    const fnskuRegex = /^X[A-Z0-9]{9}$/;
     const fnskuInput = document.getElementById("fnsku");
     const fnskuError = document.getElementById("fnskuError");
 
@@ -128,7 +128,7 @@ Jfa - Cerotti assortiti lavabili (6 dimensioni), 100 cerotti per scatola
           // Case 2: 10 chars AND INVALID format
           fnskuInput.classList.add("border-red-500", "ring-2", "ring-red-500");
           fnskuInput.classList.remove("border-gray-300", "focus:ring-blue-500");
-          fnskuError.textContent = "Invalid format. Must be X0 followed by 8 uppercase letters/numbers.";
+          fnskuError.textContent = "Invalid format. Must be X followed by 9 uppercase letters/numbers.";
           fnskuError.classList.remove("hidden");
         }
       } else {
@@ -161,7 +161,7 @@ Jfa - Cerotti assortiti lavabili (6 dimensioni), 100 cerotti per scatola
         if (fnskuValue === "") {
           fnskuError.textContent = "FNSKU is required.";
         } else {
-          fnskuError.textContent = "Must be 10 characters, starting with X0 (e.g., X001ABC123)";
+          fnskuError.textContent = "Must be 10 characters, starting with X (e.g., X001ABC123)";
         }
         fnskuError.classList.remove("hidden");
         
