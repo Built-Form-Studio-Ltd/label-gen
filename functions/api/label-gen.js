@@ -114,8 +114,8 @@ export async function onRequest(context) {
     const mmToPt = (mm) => (mm / 25.4) * 72;
 
     // 1. DEFINE the label size from your 47.8mm x 28.2mm template
-    const labelW = mmToPt(47.8); // ~135.49 pt
-    const labelH = mmToPt(28.2); // ~79.95 pt
+    const labelW = mmToPt(42.066); // ~135.49 pt
+    const labelH = mmToPt(24.979); // ~79.95 pt
     const gapX = mmToPt(9.066), gapY = mmToPt(3.679);  // Keep the 3pt gaps
 
     // 3. CALCULATE margins to center the grid on the page
@@ -128,7 +128,7 @@ export async function onRequest(context) {
         const y = pageH - marginY - (r + 1) * labelH - r * gapY;
 
         // --- Barcode Drawing ---
-        const barcodeTargetW = labelW * 0.95; // This is the *target* width
+        const barcodeTargetW = labelW; // This is the *target* width
         const barcodeH = labelH * 0.4;
         const barcodeX = x + (labelW - barcodeTargetW) / 2;
         const barcodeY = y + labelH - barcodeH - 10;
