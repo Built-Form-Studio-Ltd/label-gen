@@ -108,7 +108,7 @@ export async function onRequest(context) {
     // --- Label grid setup (FIXED) ---
     const cols = 4, rows = 10;
     const pageW = 595.28, pageH = 841.89; // A4 page size in points
-    const gapX = 3, gapY = 3;  // Keep the 3pt gaps
+    
 
     // Helper to convert mm to points
     const mmToPt = (mm) => (mm / 25.4) * 72;
@@ -116,22 +116,11 @@ export async function onRequest(context) {
     // 1. DEFINE the label size from your 47.8mm x 28.2mm template
     const labelW = mmToPt(47.8); // ~135.49 pt
     const labelH = mmToPt(28.2); // ~79.95 pt
-
-    /*
-        // --- OLD CODE (FOR REFERENCE) ---
-        const marginX = 18, marginY = 18;
-        const gapX = 3, gapY = 3;
-        const labelW = (pageW - 2 * marginX - (cols - 1) * gapX) / cols;
-        const labelH = (pageH - 2 * marginY - (rows - 1) * gapY) / rows;
-        */
-
-    // 2. CALCULATE total grid size
-    const totalGridW = (cols * labelW) + ((cols - 1) * gapX);
-    const totalGridH = (rows * labelH) + ((rows - 1) * gapY);
+    const gapX = mmToPt(9.066), gapY = mmToPt(3.679);  // Keep the 3pt gaps
 
     // 3. CALCULATE margins to center the grid on the page
-    const marginX = (pageW - totalGridW) / 2;
-    const marginY = (pageH - totalGridH) / 2;
+    const marginX = mmToPt(5.445)
+    const marginY = mmtoPt(7.385)
 
     for (let r = 0; r < rows; r++) {
       for (let c = 0; c < cols; c++) {
