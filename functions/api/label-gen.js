@@ -245,12 +245,12 @@ export async function onRequest(context) {
         // "NEW" is aligned to the left of the *label*
         page.drawText("NEW", { x: x, y: bottomY, size: 4, font: helvB });
         const countryW = helvB.widthOfTextAtSize(country, 4);
-        
+        const newW = helvB.widthOfTextAtSize("NEW", 4);
         // =================================================================
         // --- FIXED: Country is aligned to the right of the *label* ---
         // =================================================================
         page.drawText(country, {
-          x: x + labelW - countryW, // Use labelW, not barcodeW
+          x: x + labelW - countryW - newW, 
           y: bottomY,
           size: 4,
           font: helvB
