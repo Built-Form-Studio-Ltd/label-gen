@@ -120,7 +120,7 @@ export async function onRequest(context) {
 
     // 3. CALCULATE margins to center the grid on the page
     const marginX = mmToPt(5.445)
-    const marginY = mmtoPt(7.385)
+    const marginY = mmToPt(7.385)
 
     for (let r = 0; r < rows; r++) {
       for (let c = 0; c < cols; c++) {
