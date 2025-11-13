@@ -1,0 +1,303 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Box Stacking Calculator</title>
+    <!-- Load Tailwind CSS --><script src="https://cdn.tailwindcss.com"></script>
+    <!-- Configure Tailwind to use Inter font --><script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                    },
+                },
+            },
+        }
+    </script>
+    <style>
+        /* Simple loading spinner */
+        .spinner {
+            border: 4px solid rgba(0, 0, 0, 0.1);
+            border-left-color: #3b82f6; /* blue-600 */
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body class="bg-gray-100 font-sans flex items-center justify-center min-h-screen p-4">
+
+    <div class="bg-white p-6 sm:p-10 rounded-xl shadow-2xl w-full max-w-4xl">
+        
+        <h1 class="text-3xl font-bold mb-8 text-center text-gray-800">
+            Box Stacking Optimizer
+        </h1>
+
+        <!-- Input Form --><form id="boxForm">
+            <div class="grid grid-cols-1 md:grid-cols-2 md:gap-x-10 gap-y-8">
+                
+                <!-- Box 1 (Inner Box) Inputs --><div class="space-y-4">
+                    <h2 class="text-2xl font-semibold text-gray-700 border-b pb-2">
+                        Box 1 (Inner Box)
+                    </h2>
+                    <div>
+                        <label for="b1l" class="block text-sm font-medium text-gray-600 mb-1">Length</label>
+                        <input type="number" id="b1l" min="0.1" step="0.1" required placeholder="e.g., 10" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500">
+                    </div>
+                    <div>
+                        <label for="b1w" class="block text-sm font-medium text-gray-600 mb-1">Width</label>
+                        <input type="number" id="b1w" min="0.1" step="0.1" required placeholder="e.g., 5" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500">
+                    </div>
+                    <div>
+                        <label for="b1h" class="block text-sm font-medium text-gray-600 mb-1">Height</label>
+                        <input type="number" id="b1h" min="0.1" step="0.1" required placeholder="e.g., 20" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500">
+                    </div>
+                </div>
+
+                <!-- Box 2 (Container) Inputs --><div class="space-y-4">
+                    <h2 class="text-2xl font-semibold text-gray-700 border-b pb-2">
+                        Box 2 (Container)
+                    </h2>
+                    <div>
+                        <label for="b2l" class="block text-sm font-medium text-gray-600 mb-1">Length</label>
+                        <input type="number" id="b2l" min="0.1" step="0.1" required placeholder="e.g., 100" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500">
+                    </div>
+                    <div>
+                        <label for="b2w" class="block text-sm font-medium text-gray-600 mb-1">Width</label>
+                        <input type="number" id="b2w" min="0.1" step="0.1" required placeholder="e.g., 50" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500">
+                    </div>
+                    <div>
+                        <label for="b2h" class="block text-sm font-medium text-gray-600 mb-1">Height</label>
+                        <input type="number" id="b2h" min="0.1" step="0.1" required placeholder="e.g., 40" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500">
+                    </div>
+                </div>
+            </div>
+
+            <!-- Submit Button --><button type="submit" id="calculateButton" class="w-full bg-blue-600 text-white py-3 px-6 rounded-lg font-semibold mt-10 text-lg hover:bg-blue-700 transition duration-300 ease-in-out disabled:opacity-50">
+                Calculate & Generate Image
+            </button>
+        </form>
+
+        <!-- Results Section --><div id="results" class="mt-10 pt-6 border-t border-gray-200 hidden">
+            <h2 class="text-2xl font-bold mb-4 text-center text-gray-800">Optimization Result</h2>
+            
+            <!-- Text Result --><p id="resultText" class="text-lg text-center text-gray-700 mb-6"></p>
+            
+            <!-- Image Container --><div id="imageContainer" class="bg-gray-100 rounded-lg p-4 flex justify-center items-center min-h-[300px] w-full max-w-2xl mx-auto border border-gray-300">
+                <!-- Loading Spinner --><div id="loading" class="spinner hidden"></div>
+                <!-- Result Image --><img id="resultImage" src="" alt="Stacking visualization" class="hidden max-w-full rounded-lg shadow-md">
+                <!-- Error Message --><p id="imageError" class="hidden text-red-600 font-medium"></p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const form = document.getElementById('boxForm');
+            const calculateButton = document.getElementById('calculateButton');
+            
+            const results = document.getElementById('results');
+            const resultText = document.getElementById('resultText');
+            
+            const imageContainer = document.getElementById('imageContainer');
+            const loading = document.getElementById('loading');
+            const resultImage = document.getElementById('resultImage');
+            const imageError = document.getElementById('imageError');
+
+            /**
+             * Calculates the best stacking orientation for box1 inside box2.
+             * This checks all 6 possible alignments of box1's dimensions against all 3 unique box2 orientations.
+             */
+            function calculateBoxStacking(box1Dims, box2Dims) {
+                const [l1_orig, w1_orig, h1_orig] = box1Dims;
+                const [l2_orig, w2_orig, h2_orig] = box2Dims;
+
+                // All 6 permutations of box1's dimensions
+                const box1_alignments = [
+                    [l1_orig, w1_orig, h1_orig], 
+                    [l1_orig, h1_orig, w1_orig],
+                    [w1_orig, l1_orig, h1_orig], 
+                    [w1_orig, h1_orig, l1_orig],
+                    [h1_orig, l1_orig, w1_orig], 
+                    [h1_orig, w1_orig, l1_orig]
+                ];
+
+                // The 3 unique orientations for the container (Box 2)
+                const box2_orientations = [
+                    [l2_orig, w2_orig, h2_orig],
+                    [l2_orig, h2_orig, w2_orig],
+                    [w2_orig, h2_orig, l2_orig]
+                ];
+
+                let maxBoxes = 0;
+                let bestOrientation = null;
+
+                // Outer loop: Iterate through each container orientation
+                for (const [l2, w2, h2] of box2_orientations) {
+                    
+                    // Inner loop: Iterate through each box1 orientation
+                    for (const p of box1_alignments) {
+                        const [pl, pw, ph] = p;
+
+                        // Check for invalid dimensions (e.g., 0)
+                        if (pl <= 0 || pw <= 0 || ph <= 0) continue;
+
+                        const countL = Math.floor(l2 / pl);
+                        const countW = Math.floor(w2 / pw);
+                        const countH = Math.floor(h2 / ph);
+                        
+                        const total = countL * countW * countH;
+
+                        if (total > maxBoxes) {
+                            maxBoxes = total;
+                            bestOrientation = {
+                                original_box1_dims: box1Dims, 
+                                aligned_box1_dims: [pl, pw, ph],
+                                fit: [countL, countW, countH], 
+                                oriented_container_dims: [l2, w2, h2],
+                                original_container_dims: box2Dims
+                            };
+                        }
+                    }
+                }
+
+                return { maxBoxes, bestOrientation };
+            }
+
+            /**
+             * Generates an image using the Imagen API with exponential backoff.
+             */
+            async function generateImage(prompt) {
+                const apiKey = ""; // API key is handled by the environment
+                const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/imagen-4.0-generate-001:predict?key=${apiKey}`;
+                
+                const payload = {
+                    instances: [{ "prompt": prompt }],
+                    parameters: { "sampleCount": 1 }
+                };
+
+                let delay = 1000;
+                const maxRetries = 5;
+
+                for (let i = 0; i < maxRetries; i++) {
+                    try {
+                        const response = await fetch(apiUrl, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify(payload)
+                        });
+
+                        if (!response.ok) {
+                            throw new Error(`API request failed with status ${response.status}`);
+                        }
+
+                        const result = await response.json();
+                        
+                        if (result.predictions && result.predictions.length > 0 && result.predictions[0].bytesBase64Encoded) {
+                            const imageUrl = `data:image/png;base64,${result.predictions[0].bytesBase64Encoded}`;
+                            return imageUrl; 
+                        } else {
+                            throw new Error('Invalid API response structure');
+                        }
+
+                    } catch (error) {
+                        if (i === maxRetries - 1) {
+                            throw error; 
+                        }
+                        await new Promise(res => setTimeout(res, delay));
+                        delay *= 2; 
+                    }
+                    console.log(`Retrying image generation (${i + 1}/${maxRetries})...`);
+                }
+            }
+
+            // Handle form submission
+            form.addEventListener('submit', async (e) => {
+                e.preventDefault();
+                calculateButton.disabled = true;
+                calculateButton.textContent = 'Calculating...';
+
+                // Reset UI
+                results.classList.add('hidden');
+                loading.classList.remove('hidden');
+                resultImage.classList.add('hidden');
+                imageError.classList.add('hidden');
+                resultImage.src = "";
+
+                // Get values
+                const box1Dims = [
+                    parseFloat(document.getElementById('b1l').value),
+                    parseFloat(document.getElementById('b1w').value),
+                    parseFloat(document.getElementById('b1h').value)
+                ];
+                const box2Dims = [
+                    parseFloat(document.getElementById('b2l').value),
+                    parseFloat(document.getElementById('b2w').value),
+                    parseFloat(document.getElementById('b2h').value)
+                ];
+
+                // Validate
+                if (box1Dims.some(isNaN) || box2Dims.some(isNaN) || box1Dims.some(v => v <= 0) || box2Dims.some(v => v <= 0)) {
+                    resultText.textContent = "Please enter valid, positive numbers for all dimensions.";
+                    results.classList.remove('hidden');
+                    loading.classList.add('hidden');
+                    calculateButton.disabled = false;
+                    calculateButton.textContent = 'Calculate & Generate Image';
+                    return;
+                }
+
+                // Calculate
+                const { maxBoxes, bestOrientation } = calculateBoxStacking(box1Dims, box2Dims);
+                
+                results.classList.remove('hidden');
+
+                if (maxBoxes === 0 || !bestOrientation) {
+                    resultText.textContent = "No boxes can fit into the container.";
+                    loading.classList.add('hidden');
+                    imageError.textContent = "Cannot generate image as no boxes fit.";
+                    imageError.classList.remove('hidden');
+                    calculateButton.disabled = false;
+                    calculateButton.textContent = 'Calculate & Generate Image';
+                    return;
+                }
+
+                // Display text result
+                resultText.textContent = `Maximum boxes: ${maxBoxes}. 
+                    To achieve this, Box 1 (original dimensions: ${bestOrientation.original_box1_dims.join('x')}) should be oriented with Length: ${bestOrientation.aligned_box1_dims[0]}, Width: ${bestOrientation.aligned_box1_dims[1]}, Height: ${bestOrientation.aligned_box1_dims[2]}. 
+                    This stacks inside Container 2 (original dimensions: ${bestOrientation.original_container_dims.join('x')}) when it is oriented as Length: ${bestOrientation.oriented_container_dims[0]}, Width: ${bestOrientation.oriented_container_dims[1]}, Height: ${bestOrientation.oriented_container_dims[2]}.
+                    This fits ${bestOrientation.fit[0]} boxes along the container's length, ${bestOrientation.fit[1]} boxes along its width, and ${bestOrientation.fit[2]} boxes along its height.`;
+
+                calculateButton.textContent = 'Generating Image... (This may take a moment)';
+
+                // Generate image
+                try {
+                    // Prompt for plain 3D block shapes
+                    const prompt = `A minimalist, schematic 3D block diagram (isometric view) showing a perfect grid stack of exactly ${maxBoxes} identical plain 3D block shapes. Each individual block measures ${bestOrientation.aligned_box1_dims[0]}x${bestOrientation.aligned_box1_dims[1]}x${bestOrientation.aligned_box1_dims[2]} units. The overall stack is arranged as ${bestOrientation.fit[0]} blocks along its length, ${bestOrientation.fit[1]} blocks along its width, and ${bestOrientation.fit[2]} blocks along its height. Do not show any container, background, textures, shadows, or branding. Use simple, solid colors or wireframe. Include clear, concise dimension labels on the visible faces of the blocks and the overall stack dimensions. Emphasize accuracy and geometric precision with clean lines.`;
+                    
+                    console.log("Image Prompt:", prompt); // For debugging
+                    const imageUrl = await generateImage(prompt);
+                    
+                    resultImage.src = imageUrl;
+                    resultImage.classList.remove('hidden');
+                    imageError.classList.add('hidden');
+
+                } catch (error) {
+                    console.error("Image generation failed:", error);
+                    imageError.textContent = `Failed to generate image: ${error.message}. Please try again.`;
+                    imageError.classList.remove('hidden');
+                } finally {
+                    loading.classList.add('hidden');
+                    calculateButton.disabled = false;
+                    calculateButton.textContent = 'Calculate & Generate Image';
+                }
+            });
+        });
+    </script>
+</body>
+</html>
