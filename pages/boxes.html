@@ -1,664 +1,1327 @@
 <!DOCTYPE html>
+
 <html lang="en">
+
 <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-    <title>3D Pallet Packing Solver — (W x D x H)</title>
-    <script src="https://cdn.tailwindcss.com"></script>
 
-    <script type="importmap">
-        {
-            "imports": {
-                "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
-                "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"
-            }
-        }
-    </script>
+    <meta charset="UTF-8" />
 
-    <style>
-        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@100..900&display=swap');
-        body { 
-            font-family: "Inter", sans-serif; 
-        }
-        canvas { 
-            outline: none; 
-            /* Set a default cursor that indicates interaction */
-            cursor: grab;
-        }
-        /* Custom Scrollbar for log */
-        #output::-webkit-scrollbar { width: 8px; height: 8px; }
-        #output::-webkit-scrollbar-thumb { background: #4b5563; border-radius: 4px; }
-        #output::-webkit-scrollbar-track { background: #1f2937; }
-    </style>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+
+    <title>3D Pallet Packing Solver — (W x D x H)</title>
+
+    <script src="https://cdn.tailwindcss.com"></script>
+
+
+
+    <script type="importmap">
+
+        {
+
+            "imports": {
+
+                "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+
+                "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"
+
+            }
+
+        }
+
+    </script>
+
+
+
+    <style>
+
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@100..900&display=swap');
+
+        body { 
+
+            font-family: "Inter", sans-serif; 
+
+        }
+
+        canvas { 
+
+            outline: none; 
+
+            /* Set a default cursor that indicates interaction */
+
+            cursor: grab;
+
+        }
+
+        /* Custom Scrollbar for log */
+
+        #output::-webkit-scrollbar { width: 8px; height: 8px; }
+
+        #output::-webkit-scrollbar-thumb { background: #4b5563; border-radius: 4px; }
+
+        #output::-webkit-scrollbar-track { background: #1f2937; }
+
+    </style>
+
 </head>
-<body class="bg-gray-50 text-slate-800 p-2 md:p-4 min-h-screen"> 
-
-    <div class="w-full bg-white rounded-xl shadow-lg border border-slate-200 overflow-hidden">
-        <div class="p-4 grid grid-cols-1 lg:grid-cols-5 gap-4 lg:gap-6">
-            
-            <div class="lg:col-span-3 flex flex-col order-1 lg:order-2">
-                <div class="relative bg-slate-100 rounded-xl border border-slate-300 overflow-hidden shadow-lg flex-grow min-h-[400px] lg:min-h-[500px]">
-                    <canvas id="canvas-3d" class="w-full h-full block outline-none"></canvas>
-                    
-                    <div class="absolute top-4 left-4 bg-white/90 backdrop-blur-sm p-3 rounded-lg shadow border border-slate-200 text-xs text-slate-600 pointer-events-none select-none">
-                        <p class="font-bold text-slate-800 mb-1">Controls:</p>
-                        <ul class="list-disc list-inside space-y-0.5">
-                            <li>Left Click + Drag to Rotate</li>
-                            <li>Right Click + Drag to Pan</li>
-                            <li>Scroll to Zoom</li>
-                        </ul>
-                    </div>
-                    <div id="stats-overlay" class="hidden absolute bottom-4 right-4 bg-slate-900/90 backdrop-blur text-white p-4 rounded-xl shadow-2xl border border-slate-700 text-sm">
-                        <div class="grid grid-cols-2 gap-x-6 gap-y-1">
-                            <span class="text-slate-400">Packed Boxes:</span>
-                            <span class="font-mono font-bold text-green-400 text-right" id="stat-count">0</span>
-                            <span class="text-slate-400">Vol. Efficiency:</span>
-                            <span class="font-mono font-bold text-yellow-400 text-right" id="stat-efficiency">0%</span>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <div class="lg:col-span-2 space-y-4 order-2 lg:order-1">
-                
-                <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-md">
-                    <h3 class="flex items-center text-base font-bold text-slate-800 mb-3">
-                        <span class="bg-indigo-100 text-indigo-700 w-7 h-7 rounded-full flex items-center justify-center mr-2 text-sm font-extrabold shadow">1</span>
-                        Pallet Dimensions (cm)
-                    </h3>
-                    
-                    <label class="block text-xs font-bold text-slate-500 uppercase mb-1" for="bin-selector">Select Pallet Size (W x D x H Usable)</label>
-                    <select id="bin-selector" class="w-full p-2 border border-slate-300 bg-white rounded-lg focus:ring-2 focus:ring-indigo-500 focus:outline-none transition appearance-none cursor-pointer text-sm">
-                        <option value="120,100,160">UK Pallet (120x100x160 cm)</option> 
-                        <option value="120,80,160" selected>EU Pallet (120x80x160 cm)</option>
-                    </select>
-                </div>
-
-                <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-md">
-                    <h3 class="flex items-center text-base font-bold text-slate-800 mb-3">
-                        <span class="bg-indigo-100 text-indigo-700 w-7 h-7 rounded-full flex items-center justify-center mr-2 text-sm font-extrabold shadow">2</span>
-                        Box Dimensions (cm)
-                    </h3>
-                    
-                    <div class="mb-3">
-                        <label class="block text-xs font-bold text-slate-500 uppercase mb-1" for="product-selector">Select Product</label>
-                        <select id="product-selector" class="w-full p-2 border border-slate-300 bg-white rounded-lg focus:ring-2 focus:ring-indigo-500 focus:outline-none transition appearance-none cursor-pointer text-sm">
-                            </select>
-                    </div>
-
-                    <div class="grid grid-cols-3 gap-2">
-                        <div>
-                            <label class="block text-xs font-bold text-slate-500 uppercase mb-1">Width (W)</label>
-                            <input type="number" id="item-width" value="40" min="0" class="w-full p-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:outline-none transition text-sm">
-                        </div>
-                        <div>
-                            <label class="block text-xs font-bold text-slate-500 uppercase mb-1">Depth (D)</label>
-                            <input type="number" id="item-depth" value="40" min="0" class="w-full p-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:outline-none transition text-sm">
-                        </div>
-                        <div>
-                            <label class="block text-xs font-bold text-slate-500 uppercase mb-1">Height (H)</label>
-                            <input type="number" id="item-height" value="50" min="0" class="w-full p-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:outline-none transition text-sm">
-                        </div>
-                    </div>
-                    
-                    <div class="mt-3">
-                        <label class="block text-xs font-bold text-slate-500 uppercase mb-1" for="item-tolerance">Box Spacing/Tolerance (cm)</label>
-                        <select id="item-tolerance" class="w-full p-2 border border-slate-300 bg-white rounded-lg focus:ring-2 focus:ring-indigo-500 focus:outline-none transition appearance-none cursor-pointer text-sm">
-                            <option value="0.0" selected>0.0 (None)</option>
-                            <option value="0.1">0.1</option>
-                            <option value="0.2">0.2</option>
-                            <option value="0.3">0.3</option>
-                            <option value="0.4">0.4</option>
-                            <option value="0.5">0.5</option>
-                        </select>
-                    </div>
-
-                </div>
-                
-                <button id="pack-button" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-extrabold py-3 px-6 rounded-xl shadow-lg transition duration-200 transform hover:scale-[1.01] text-base uppercase tracking-wider disabled:bg-indigo-400 disabled:cursor-not-allowed">
-                    Calculate & Visualize
-                </button>
-
-                <div class="bg-slate-900 rounded-xl overflow-hidden shadow-xl border border-slate-700">
-                    <div class="bg-slate-800 px-4 py-2 border-b border-slate-700 text-xs font-mono text-slate-400 uppercase font-bold">System Log</div>
-                    <pre id="output" class="p-3 text-xs text-green-400 font-mono h-32 overflow-y-auto whitespace-pre-wrap"></pre>
-                </div>
-                </div>
-            </div>
-        </div>
-
-    <script type="module">
-        import * as THREE from 'three';
-        import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
-
-        // --- Global Variables ---
-        let scene, camera, renderer, controls, packingGroup;
-        const PALLET_BASE_HEIGHT = 20; // 0.2m = 20cm
-        const outputElement = document.getElementById("output");
-        // Define a scaling factor to convert decimals to integers
-        const SCALE_FACTOR = 10; 
-
-        // === vvv PRODUCT DATABASE vvv ===
-        const productDatabase = [
-            { name: "Medium Gadget Box", width: 40, depth: 40, height: 50 },
-            { name: "Small Widget Box", width: 20, depth: 15, height: 10 },
-            { name: "Large Component Box", width: 60, depth: 40, height: 40 },
-            { name: "Tall Item", width: 30, depth: 30, height: 80 },
-            { name: "Flat Item", width: 50, depth: 50, height: 5 },
-            { name: "Shoe Box", width: 35, depth: 20, height: 12 },
-            { name: "Book Box (Small)", width: 30, depth: 22, height: 15 },
-            { name: "Mug Box", width: 12, depth: 10, height: 10 },
-            { name: "Wine Bottle Box", width: 9, depth: 9, height: 33 },
-            { name: "T-Shirt (Flat Pack)", width: 30, depth: 25, height: 3 }
-        ];
-        // === ^^^ PRODUCT DATABASE ^^^ ===
-
-        // --- Logging Helper ---
-        function log(message, isError = false) {
-            const timestamp = new Date().toLocaleTimeString();
-            const colorClass = isError ? 'text-red-400' : 'text-green-400';
-            console.log(message);
-            outputElement.innerHTML += `<span class="text-slate-500">[${timestamp}]</span> <span class="${colorClass}">${message}</span>\n`;
-            outputElement.scrollTop = outputElement.scrollHeight;
-        }
-
-        // ==========================================
-        // ALGORITHM CLASSES
-        // ==========================================
-
-        class Item {
-            constructor(name, width, depth, height, originalWidth, originalDepth, originalHeight) {
-                this.name = name;
-                this.width = width;
-                this.depth = depth;
-                this.height = height;
-                this.originalWidth = originalWidth;
-                this.originalDepth = originalDepth;
-                this.originalHeight = originalHeight;
-                this.volume = originalWidth * originalDepth * originalHeight;
-            }
-            getDimensions() { return [this.width, this.depth, this.height]; }
-        }
-
-        class Bin {
-            constructor(name, width, depth, height) {
-                this.name = name;
-                this.width = width;
-                this.depth = depth;
-                this.height = height;
-                this.volume = width * depth * height;
-                this.items = [];
-                this.insertion_points = [[0, 0, 0]];
-            }
-        }
-
-        class Packer {
-            constructor() {
-                this.bins = [];
-            }
-
-            addBin(bin) { this.bins.push(bin); }
-
-            getRotations(item) {
-                const [w, d, h] = item.getDimensions();
-                const allRotations = [
-                    [w, d, h], [w, h, d], [d, w, h], 
-                    [d, h, w], [h, w, d], [h, d, w]
-                ];
-                
-                const seen = new Set();
-                return allRotations.filter(r => {
-                    const key = JSON.stringify(r);
-                    const isNew = !seen.has(key);
-                    seen.add(key);
-                    return isNew;
-                });
-            }
-
-            checkOverlap(itemDims, itemPos, existingItemDims, existingItemPos) {
-                const [w1, d1, h1] = itemDims;
-                const [x1, y1, z1] = itemPos;
-                const [w2, d2, h2] = existingItemDims;
-                const [x2, y2, z2] = existingItemPos;
-
-                return !(x1 + w1 <= x2 || x1 >= x2 + w2 ||
-                         y1 + d1 <= y2 || y1 >= y2 + d2 ||
-                         z1 + h1 <= z2 || z1 >= z2 + h2);
-            }
-
-            tryFitItemInBin(item, bin) {
-                const sortedPoints = [...bin.insertion_points].sort((a, b) => {
-                    return a[2] - b[2] || a[1] - b[1] || a[0] - b[0];
-                });
-
-                const rotations = this.getRotations(item);
-
-                for (const point of sortedPoints) {
-                    const [x, y, z] = point;
-
-                    for (const dims of rotations) {
-                        const [w, d, h] = dims;
-
-                        if (x + w > bin.width || y + d > bin.depth || z + h > bin.height) {
-                            continue;
-                        }
-
-                        let overlaps = false;
-                        for (const packed of bin.items) {
-                            if (this.checkOverlap(dims, point, packed.rotatedDimensions, packed.position)) {
-                                overlaps = true;
-                                break;
-                            }
-                        }
-
-                        if (!overlaps) {
-                            bin.items.push({
-                                item: item,
-                                position: point,
-                                rotatedDimensions: dims
-                            });
-
-                            const index = bin.insertion_points.findIndex(p => p[0] === point[0] && p[1] === point[1] && p[2] === point[2]);
-                            if (index > -1) bin.insertion_points.splice(index, 1);
-
-                            const newPoints = [
-                                [x + w, y, z],
-                                [x, y + d, z],
-                                [x, y, z + h]
-                            ];
-
-                            for (const np of newPoints) {
-                                if (np[0] < bin.width && np[1] < bin.depth && np[2] < bin.height) {
-                                    const isDuplicate = bin.insertion_points.some(p => p[0]===np[0] && p[1]===np[1] && p[2]===np[2]);
-                                    if (!isDuplicate) {
-                                        let isInside = false;
-                                        for (const packed of bin.items) {
-                                            const [pw, pd, ph] = packed.rotatedDimensions;
-                                            const [px, py, pz] = packed.position;
-                                            
-                                            if (np[0] > px && np[0] < px + pw &&
-                                                np[1] > py && np[1] < py + pd &&
-                                                np[2] > pz && np[2] < pz + ph) {
-                                                isInside = true;
-                                                break;
-                                            }
-                                        }
-                                        if (!isInside) {
-                                            bin.insertion_points.push(np);
-                                        }
-                                    }
-                                }
-                            }
-                            
-                            return true;
-                        }
-                    }
-                }
-                return false;
-            }
-
-            pack(sampleItem) {
-                if (this.bins.length === 0) return [];
-                const bin = this.bins[0];
-                
-                bin.items = [];
-                bin.insertion_points = [[0, 0, 0]];
-
-                let count = 0;
-                let safetyBreaker = 0;
-                const maxItems = 5000;
-
-                const itemW = sampleItem.width;
-                const itemD = sampleItem.depth;
-                const itemH = sampleItem.height;
-
-                const itemW_real = sampleItem.originalWidth;
-                const itemD_real = sampleItem.originalDepth;
-                const itemH_real = sampleItem.originalHeight;
-                
-                log(`Pallet (Usable): ${(bin.width/SCALE_FACTOR).toFixed(2)}x${(bin.depth/SCALE_FACTOR).toFixed(2)}x${(bin.height/SCALE_FACTOR).toFixed(2)} cm. Box (Real): ${itemW_real/SCALE_FACTOR}x${itemD_real/SCALE_FACTOR}x${itemH_real/SCALE_FACTOR} cm`);
-
-                while(safetyBreaker < maxItems) {
-                    const itemInstance = new Item(
-                        `Box_${count}`, 
-                        itemW, itemD, itemH,
-                        itemW_real, itemD_real, itemH_real
-                    );
-                    
-                    if (this.tryFitItemInBin(itemInstance, bin)) {
-                        count++;
-                    } else {
-                        break;
-                    }
-                    safetyBreaker++;
-                }
-
-                return [bin];
-            }
-        }
-
-        // ==========================================
-        // 3D VISUALIZATION
-        // ==========================================
-
-        function init3D() {
-            const canvas = document.getElementById('canvas-3d');
-            renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true });
-            renderer.setPixelRatio(window.devicePixelRatio);
-            renderer.shadowMap.enabled = true;
-
-            scene = new THREE.Scene();
-            scene.background = new THREE.Color(0xf1f5f9); // Light Gray Background
-
-            camera = new THREE.PerspectiveCamera(45, canvas.clientWidth / canvas.clientHeight, 0.1, 10000);
-            camera.position.set(200, 200, 200);
-
-            controls = new OrbitControls(camera, canvas);
-            controls.enableDamping = true;
-
-            const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
-            scene.add(ambientLight);
-            
-            const dirLight = new THREE.DirectionalLight(0xffffff, 0.8);
-            dirLight.position.set(100, 200, 100);
-            dirLight.castShadow = true;
-            scene.add(dirLight);
-
-            packingGroup = new THREE.Group();
-            scene.add(packingGroup);
-
-            const gridHelper = new THREE.GridHelper(300, 10, 0xd1d5db, 0xd1d5db); // Lighter grid
-            scene.add(gridHelper);
-
-            animate();
-            
-            initProductSelector(); 
-            runSimulation();
-        }
-
-        function resizeRenderer() {
-            const canvas = renderer.domElement;
-            const width = canvas.clientWidth;
-            const height = canvas.clientHeight;
-            if (canvas.width !== width || canvas.height !== height) {
-                renderer.setSize(width, height, false);
-                camera.aspect = width / height;
-                camera.updateProjectionMatrix();
-            }
-        }
-
-        function animate() {
-            requestAnimationFrame(animate);
-            resizeRenderer();
-            controls.update();
-            renderer.render(scene, camera);
-        }
-
-        function getItemColor(index) {
-            const hue = (index * 137.508) % 360; 
-            return new THREE.Color(`hsl(${hue}, 75%, 60%)`);
-        }
-
-        // === vvv FUNCTION UPDATED TO FIX VISUAL BUG vvv ===
-        function drawResults(packedBin, bW_original, bD_original) {
-            // Clear old group
-            while(packingGroup.children.length > 0) {
-                const obj = packingGroup.children[0];
-                packingGroup.remove(obj);
-                if(obj.geometry) obj.geometry.dispose();
-                if(obj.material) {
-                    if(Array.isArray(obj.material)) obj.material.forEach(m => m.dispose());
-                    else obj.material.dispose();
-                }
-            }
-
-            if (!packedBin) return;
-
-            const bW = bW_original;
-            const stackHeight = packedBin.height / SCALE_FACTOR;
-            const bH_total = stackHeight + PALLET_BASE_HEIGHT;
-            const bD = bD_original;
-
-            // 1. Draw Pallet Base
-            const palletBaseGeo = new THREE.BoxGeometry(bW, PALLET_BASE_HEIGHT, bD);
-            const palletBaseMat = new THREE.MeshStandardMaterial({ color: 0x603f27, roughness: 0.8 });
-            const palletBase = new THREE.Mesh(palletBaseGeo, palletBaseMat);
-            palletBase.position.set(bW/2, PALLET_BASE_HEIGHT/2, bD/2);
-            packingGroup.add(palletBase);
-
-
-            // 2. Draw Stack Wireframe
-            const stackGeo = new THREE.BoxGeometry(bW, stackHeight, bD);
-            const edgesGeo = new THREE.EdgesGeometry(stackGeo);
-            const edgesMat = new THREE.LineBasicMaterial({ color: 0x334155, linewidth: 2 });
-            const stackWireframe = new THREE.LineSegments(edgesGeo, edgesMat);
-            stackWireframe.position.set(bW/2, PALLET_BASE_HEIGHT + stackHeight/2, bD/2);
-            packingGroup.add(stackWireframe);
-
-            // 3. Draw Items
-            packedBin.items.forEach((entry, i) => {
-                
-                // === THE FIX ===
-                // Get the dimensions THE SOLVER ACTUALLY USED from entry.rotatedDimensions
-                const [solver_w_scaled, solver_d_scaled, solver_h_scaled] = entry.rotatedDimensions;
-
-                // Unscale them for visualization
-                const w_vis = solver_w_scaled / SCALE_FACTOR; // Visual Width (X)
-                const d_vis = solver_d_scaled / SCALE_FACTOR; // Visual Depth (Z)
-                const h_vis = solver_h_scaled / SCALE_FACTOR; // Visual Height (Y)
-                // === END FIX ===
-
-                // Get position
-                const [x_scaled, y_scaled, z_scaled] = entry.position;
-                const x = x_scaled / SCALE_FACTOR; // Position along Width (X)
-                const y = y_scaled / SCALE_FACTOR; // Position along Depth (Z)
-                const z = z_scaled / SCALE_FACTOR; // Position along Height (Y)
-
-                // THREE.BoxGeometry is (width, height, depth) -> (X, Y, Z)
-                // We map:
-                // Solver W (w_vis) -> Visual X (width)
-                // Solver H (h_vis) -> Visual Y (height)
-                // Solver D (d_vis) -> Visual Z (depth)
-                const itemGeo = new THREE.BoxGeometry(w_vis, h_vis, d_vis); 
-                const itemMat = new THREE.MeshStandardMaterial({
-                    color: getItemColor(i),
-                    roughness: 0.3,
-                    metalness: 0.1,
-                    transparent: true,
-                    opacity: 0.9
-                });
-                const mesh = new THREE.Mesh(itemGeo, itemMat);
-                
-                // Map solver (x,y,z) to visual (X,Y,Z)
-                mesh.position.set(
-                    x + w_vis/2,                           // X pos
-                    (z + h_vis/2) + PALLET_BASE_HEIGHT,    // Y pos (Height)
-                    y + d_vis/2                            // Z pos (Depth)
-                );
-                
-                const edgeGeo = new THREE.EdgesGeometry(itemGeo);
-                const edgeMat = new THREE.LineBasicMaterial({ color: 0x000000, opacity: 0.2, transparent: true });
-                const edgeLines = new THREE.LineSegments(edgeGeo, edgeMat);
-                mesh.add(edgeLines);
-
-                packingGroup.add(mesh);
-            });
-
-            // 4. Center Camera logic
-            const maxSize = Math.max(bW, bH_total, bD);
-            
-            packingGroup.position.set(-bW/2, 0, -bD/2);
-
-            const dist = maxSize * 2.5;
-            camera.position.set(dist, dist * 0.8, dist);
-            camera.lookAt(0, bH_total/2, 0); 
-            controls.target.set(0, bH_total/2, 0);
-        }
-        // === ^^^ END OF UPDATED FUNCTION ^^^ ===
-
-        // ==========================================
-        // UI HANDLER
-        // ==========================================
-
-        function initProductSelector() {
-            const selector = document.getElementById('product-selector');
-            const widthInput = document.getElementById('item-width');
-            const depthInput = document.getElementById('item-depth');
-            const heightInput = document.getElementById('item-height');
-
-            let optionsHTML = '<option value="">-- Select a Product --</option>';
-            productDatabase.sort((a, b) => a.name.localeCompare(b.name)); 
-            
-            productDatabase.forEach((product) => {
-                const valueString = `${product.width},${product.depth},${product.height}`;
-                optionsHTML += `<option value="${valueString}">
-                    ${product.name} (${product.width}x${product.depth}x${product.height})
-                </option>`;
-            });
-            selector.innerHTML = optionsHTML;
-
-            selector.addEventListener('change', () => {
-                const selectedValue = selector.value;
-                if (selectedValue) {
-                    const [w, d, h] = selectedValue.split(',').map(Number);
-                    widthInput.value = w;
-                    depthInput.value = d;
-                    heightInput.value = h;
-                }
-            });
-            
-            [widthInput, depthInput, heightInput].forEach(input => {
-                input.addEventListener('input', () => {
-                    const currentValue = `${widthInput.value},${depthInput.value},${heightInput.value}`;
-                    const match = productDatabase.some(p => `${p.width},${p.depth},${p.height}` === currentValue);
-                    
-                    if (!match) {
-                        selector.value = "";
-                    } else {
-                        selector.value = currentValue;
-                    }
-                });
-            });
-
-            const initialValue = `${widthInput.value},${depthInput.value},${heightInput.value}`;
-            if (productDatabase.some(p => `${p.width},${p.depth},${p.height}` === initialValue)) {
-                selector.value = initialValue;
-            }
-        }
-
-
-        const btn = document.getElementById('pack-button');
-        
-        btn.addEventListener('click', async () => {
-            btn.disabled = true;
-            btn.textContent = "Calculating...";
-            btn.classList.add('opacity-75');
-            outputElement.innerHTML = "";
-            
-            setTimeout(() => {
-                try {
-                    runSimulation();
-                } catch (e) {
-                    log("Critical Error: " + e.message, true);
-                    console.error(e);
-                }
-                btn.disabled = false;
-                btn.textContent = "Calculate & Visualize";
-                btn.classList.remove('opacity-75');
-            }, 50);
-        });
-
-        function runSimulation() {
-            // --- Get all inputs and store unscaled versions ---
-            
-            const binValue = document.getElementById('bin-selector').value;
-            const [binW_original_unscaled, binD_original_unscaled, binH_usable_unscaled] = binValue.split(',').map(Number);
-            
-            const tolerance_unscaled = parseFloat(document.getElementById('item-tolerance').value);
-
-            const itemW_unscaled = parseFloat(document.getElementById('item-width').value) + tolerance_unscaled;
-            const itemD_unscaled = parseFloat(document.getElementById('item-depth').value) + tolerance_unscaled;
-            const itemH_unscaled = parseFloat(document.getElementById('item-height').value) + tolerance_unscaled;
-
-            
-            // --- Scale all values up by SCALE_FACTOR for the solver ---
-            
-            const binW = Math.round(binW_original_unscaled * SCALE_FACTOR);
-            const binD = Math.round(binD_original_unscaled * SCALE_FACTOR);
-            const binH = Math.round(binH_usable_unscaled * SCALE_FACTOR);
-            
-            const itemW_scaled = Math.round(itemW_unscaled * SCALE_FACTOR);
-            const itemD_scaled = Math.round(itemD_unscaled * SCALE_FACTOR);
-            const itemH_scaled = Math.round(itemH_unscaled * SCALE_FACTOR);
-
-            const itemW_solver = itemW_scaled;
-            const itemD_solver = itemD_scaled;
-            const itemH_solver = itemH_scaled;
-
-
-            // --- Validation ---
-            if ([binW_original_unscaled, binD_original_unscaled, binH_usable_unscaled, itemW_unscaled, itemD_unscaled, itemH_unscaled].some(v => isNaN(v) || v < 0)) {
-                log("Error: All dimensions must be positive or zero.", true);
-                return;
-            }
-
-            const packer = new Packer();
-            const sampleItem = new Item("Box", 
-                itemW_scaled, itemD_scaled, itemH_scaled, 
-                itemW_scaled, itemD_scaled, itemH_scaled
-            );
-            const rotations = packer.getRotations(sampleItem);
-
-            const canFit = rotations.some(dims => {
-                const [w, d, h] = dims;
-                if (w <= binW && d <= binD && h <= binH) return true;
-                const perms = [
-                    [w, d, h], [w, h, d], [d, w, h], 
-                    [d, h, w], [h, w, d], [h, d, w]
-                ];
-                return perms.some(p => p[0] <= binW && p[1] <= binD && p[2] <= binH);
-            });
-
-            if (!canFit) {
-                log(`Error: Item size (${itemW_unscaled.toFixed(1)}x${itemD_unscaled.toFixed(1)}x${itemH_unscaled.toFixed(1)} cm) cannot fit within the usable pallet space (${binW_original_unscaled}x${binD_original_unscaled}x${binH_usable_unscaled} cm).`, true);
-                return;
-            }
-
-            const binObj = new Bin("Pallet 1", binW, binD, binH);
-            packer.addBin(binObj);
-
-            // Execute
-            const start = performance.now();
-            const resultBins = packer.pack(sampleItem);
-            const end = performance.now();
-
-            const filledBin = resultBins[0];
-            const count = filledBin.items.length;
-            
-            // --- Volume calculation update ---
-            // We must use the item's original (pre-rotation) volume for this.
-            // 'sampleItem.volume' holds the correct pre-rotated volume.
-            const usedVol = count * sampleItem.volume; 
-            const totalVol = binObj.volume; // Use bin's volume property
-            // --- End update ---
-            
-            const efficiency = totalVol > 0 ? (usedVol / totalVol * 100).toFixed(2) : "0.00";
-
-            document.getElementById('stats-overlay').classList.remove('hidden');
-            document.getElementById('stat-count').textContent = count;
-            document.getElementById('stat-efficiency').textContent = efficiency + "%";
-
-            log(`Calculation finished in ${(end - start).toFixed(2)}ms`);
-            log(`Packed ${count} boxes. Pallet total height: ${(binH_usable_unscaled + PALLET_BASE_HEIGHT/SCALE_FACTOR).toFixed(1)} cm (Stacking height: ${binH_usable_unscaled.toFixed(1)} cm).`);
-            
-            const scale_vol_factor = Math.pow(SCALE_FACTOR, 3);
-            log(`Volume Utilization: ${(usedVol / scale_vol_factor).toFixed(0)} / ${(totalVol / scale_vol_factor).toFixed(0)} cm³ (${efficiency}%)`);
-
-            drawResults(filledBin, binW_original_unscaled, binD_original_unscaled);
-        }
-
-        // Start Scene
-        init3D();
-    </script>
+
+<body class="bg-gray-50 text-slate-800 p-4 md:p-8 min-h-screen"> 
+
+
+
+    <div class="max-w-7xl mx-auto bg-white rounded-2xl shadow-2xl border border-slate-200 overflow-hidden">
+
+        <div class="p-6 grid grid-cols-1 lg:grid-cols-5 gap-6 lg:gap-8">
+
+            
+
+            <div class="lg:col-span-3 flex flex-col order-1 lg:order-2">
+
+                <div class="relative bg-slate-100 rounded-xl border border-slate-300 overflow-hidden shadow-lg flex-grow min-h-[500px] lg:min-h-[600px]">
+
+                    <canvas id="canvas-3d" class="w-full h-full block outline-none"></canvas>
+
+                    
+
+                    <div class="absolute top-4 left-4 bg-white/90 backdrop-blur-sm p-3 rounded-lg shadow border border-slate-200 text-xs text-slate-600 pointer-events-none select-none">
+
+                        <p class="font-bold text-slate-800 mb-1">Controls:</p>
+
+                        <ul class="list-disc list-inside space-y-0.5">
+
+                            <li>Left Click + Drag to Rotate</li>
+
+                            <li>Right Click + Drag to Pan</li>
+
+                            <li>Scroll to Zoom</li>
+
+                        </ul>
+
+                    </div>
+
+                    <div id="stats-overlay" class="hidden absolute bottom-4 right-4 bg-slate-900/90 backdrop-blur text-white p-4 rounded-xl shadow-2xl border border-slate-700 text-sm">
+
+                        <div class="grid grid-cols-2 gap-x-6 gap-y-1">
+
+                            <span class="text-slate-400">Packed Boxes:</span>
+
+                            <span class="font-mono font-bold text-green-400 text-right" id="stat-count">0</span>
+
+                            <span class="text-slate-400">Vol. Efficiency:</span>
+
+                            <span class="font-mono font-bold text-yellow-400 text-right" id="stat-efficiency">0%</span>
+
+                        </div>
+
+                    </div>
+
+                </div>
+
+            </div>
+
+
+
+            <div class="lg:col-span-2 space-y-6 order-2 lg:order-1">
+
+                
+
+                <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-md">
+
+                    <h3 class="flex items-center text-lg font-bold text-slate-800 mb-4">
+
+                        <span class="bg-indigo-100 text-indigo-700 w-8 h-8 rounded-full flex items-center justify-center mr-3 text-base font-extrabold shadow">1</span>
+
+                        Pallet Dimensions (cm)
+
+                    </h3>
+
+                    
+
+                    <label class="block text-xs font-bold text-slate-500 uppercase mb-1" for="bin-selector">Select Pallet Size (W x D x H Usable)</label>
+
+                    <select id="bin-selector" class="w-full p-3 border border-slate-300 bg-white rounded-lg focus:ring-2 focus:ring-indigo-500 focus:outline-none transition appearance-none cursor-pointer">
+
+                        <option value="120,100,160">UK Pallet (120x100x160 cm)</option> 
+
+                        <option value="120,80,160" selected>EU Pallet (120x80x160 cm)</option>
+
+                    </select>
+
+                </div>
+
+
+
+                <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-md">
+
+                    <h3 class="flex items-center text-lg font-bold text-slate-800 mb-4">
+
+                        <span class="bg-indigo-100 text-indigo-700 w-8 h-8 rounded-full flex items-center justify-center mr-3 text-base font-extrabold shadow">2</span>
+
+                        Box Dimensions (cm)
+
+                    </h3>
+
+                    
+
+                    <div class="mb-4">
+
+                        <label class="block text-xs font-bold text-slate-500 uppercase mb-1" for="product-selector">Select Product</label>
+
+                        <select id="product-selector" class="w-full p-3 border border-slate-300 bg-white rounded-lg focus:ring-2 focus:ring-indigo-500 focus:outline-none transition appearance-none cursor-pointer">
+
+                            </select>
+
+                    </div>
+
+
+
+                    <div class="grid grid-cols-3 gap-3">
+
+                        <div>
+
+                            <label class="block text-xs font-bold text-slate-500 uppercase mb-1">Width (W)</label>
+
+                            <input type="number" id="item-width" value="40" min="0" class="w-full p-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:outline-none transition text-sm">
+
+                        </div>
+
+                        <div>
+
+                            <label class="block text-xs font-bold text-slate-500 uppercase mb-1">Depth (D)</label>
+
+                            <input type="number" id="item-depth" value="40" min="0" class="w-full p-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:outline-none transition text-sm">
+
+                        </div>
+
+                        <div>
+
+                            <label class="block text-xs font-bold text-slate-500 uppercase mb-1">Height (H)</label>
+
+                            <input type="number" id="item-height" value="50" min="0" class="w-full p-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:outline-none transition text-sm">
+
+                        </div>
+
+                    </div>
+
+                    
+
+                    <div class="mt-4">
+
+                        <label class="block text-xs font-bold text-slate-500 uppercase mb-1" for="item-tolerance">Box Spacing/Tolerance (cm)</label>
+
+                        <select id="item-tolerance" class="w-full p-3 border border-slate-300 bg-white rounded-lg focus:ring-2 focus:ring-indigo-500 focus:outline-none transition appearance-none cursor-pointer text-sm">
+
+                            <option value="0.0" selected>0.0 (None)</option>
+
+                            <option value="0.1">0.1</option>
+
+                            <option value="0.2">0.2</option>
+
+                            <option value="0.3">0.3</option>
+
+                            <option value="0.4">0.4</option>
+
+                            <option value="0.5">0.5</option>
+
+                        </select>
+
+                    </div>
+
+
+
+                </div>
+
+                
+
+                <button id="pack-button" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-extrabold py-4 px-6 rounded-xl shadow-lg transition duration-200 transform hover:scale-[1.01] text-lg uppercase tracking-wider disabled:bg-indigo-400 disabled:cursor-not-allowed">
+
+                    Calculate & Visualize
+
+                </button>
+
+
+
+                <div class="bg-slate-900 rounded-xl overflow-hidden shadow-xl border border-slate-700">
+
+                    <div class="bg-slate-800 px-4 py-2 border-b border-slate-700 text-xs font-mono text-slate-400 uppercase font-bold">System Log</div>
+
+                    <pre id="output" class="p-4 text-xs text-green-400 font-mono h-48 overflow-y-auto whitespace-pre-wrap"></pre>
+
+                </div>
+
+                </div>
+
+            </div>
+
+        </div>
+
+
+
+    <script type="module">
+
+        import * as THREE from 'three';
+
+        import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+
+
+
+        // --- Global Variables ---
+
+        let scene, camera, renderer, controls, packingGroup;
+
+        const PALLET_BASE_HEIGHT = 20; // 0.2m = 20cm
+
+        const outputElement = document.getElementById("output");
+
+        // Define a scaling factor to convert decimals to integers
+
+        const SCALE_FACTOR = 10; 
+
+
+
+        // === vvv PRODUCT DATABASE vvv ===
+
+        const productDatabase = [
+
+            { name: "Medium Gadget Box", width: 40, depth: 40, height: 50 },
+
+            { name: "Small Widget Box", width: 20, depth: 15, height: 10 },
+
+            { name: "Large Component Box", width: 60, depth: 40, height: 40 },
+
+            { name: "Tall Item", width: 30, depth: 30, height: 80 },
+
+            { name: "Flat Item", width: 50, depth: 50, height: 5 },
+
+            { name: "Shoe Box", width: 35, depth: 20, height: 12 },
+
+            { name: "Book Box (Small)", width: 30, depth: 22, height: 15 },
+
+            { name: "Mug Box", width: 12, depth: 10, height: 10 },
+
+            { name: "Wine Bottle Box", width: 9, depth: 9, height: 33 },
+
+            { name: "T-Shirt (Flat Pack)", width: 30, depth: 25, height: 3 }
+
+        ];
+
+        // === ^^^ PRODUCT DATABASE ^^^ ===
+
+
+
+        // --- Logging Helper ---
+
+        function log(message, isError = false) {
+
+            const timestamp = new Date().toLocaleTimeString();
+
+            const colorClass = isError ? 'text-red-400' : 'text-green-400';
+
+            console.log(message);
+
+            outputElement.innerHTML += `<span class="text-slate-500">[${timestamp}]</span> <span class="${colorClass}">${message}</span>\n`;
+
+            outputElement.scrollTop = outputElement.scrollHeight;
+
+        }
+
+
+
+        // ==========================================
+
+        // ALGORITHM CLASSES
+
+        // ==========================================
+
+
+
+        class Item {
+
+            constructor(name, width, depth, height, originalWidth, originalDepth, originalHeight) {
+
+                this.name = name;
+
+                this.width = width;
+
+                this.depth = depth;
+
+                this.height = height;
+
+                this.originalWidth = originalWidth;
+
+                this.originalDepth = originalDepth;
+
+                this.originalHeight = originalHeight;
+
+                this.volume = originalWidth * originalDepth * originalHeight;
+
+            }
+
+            getDimensions() { return [this.width, this.depth, this.height]; }
+
+        }
+
+
+
+        class Bin {
+
+            constructor(name, width, depth, height) {
+
+                this.name = name;
+
+                this.width = width;
+
+                this.depth = depth;
+
+                this.height = height;
+
+                this.volume = width * depth * height;
+
+                this.items = [];
+
+                this.insertion_points = [[0, 0, 0]];
+
+            }
+
+        }
+
+
+
+        class Packer {
+
+            constructor() {
+
+                this.bins = [];
+
+            }
+
+
+
+            addBin(bin) { this.bins.push(bin); }
+
+
+
+            getRotations(item) {
+
+                const [w, d, h] = item.getDimensions();
+
+                const allRotations = [
+
+                    [w, d, h], [w, h, d], [d, w, h], 
+
+                    [d, h, w], [h, w, d], [h, d, w]
+
+                ];
+
+                
+
+                const seen = new Set();
+
+                return allRotations.filter(r => {
+
+                    const key = JSON.stringify(r);
+
+                    const isNew = !seen.has(key);
+
+                    seen.add(key);
+
+                    return isNew;
+
+                });
+
+            }
+
+
+
+            checkOverlap(itemDims, itemPos, existingItemDims, existingItemPos) {
+
+                const [w1, d1, h1] = itemDims;
+
+                const [x1, y1, z1] = itemPos;
+
+                const [w2, d2, h2] = existingItemDims;
+
+                const [x2, y2, z2] = existingItemPos;
+
+
+
+                return !(x1 + w1 <= x2 || x1 >= x2 + w2 ||
+
+                         y1 + d1 <= y2 || y1 >= y2 + d2 ||
+
+                         z1 + h1 <= z2 || z1 >= z2 + h2);
+
+            }
+
+
+
+            tryFitItemInBin(item, bin) {
+
+                const sortedPoints = [...bin.insertion_points].sort((a, b) => {
+
+                    return a[2] - b[2] || a[1] - b[1] || a[0] - b[0];
+
+                });
+
+
+
+                const rotations = this.getRotations(item);
+
+
+
+                for (const point of sortedPoints) {
+
+                    const [x, y, z] = point;
+
+
+
+                    for (const dims of rotations) {
+
+                        const [w, d, h] = dims;
+
+
+
+                        if (x + w > bin.width || y + d > bin.depth || z + h > bin.height) {
+
+                            continue;
+
+                        }
+
+
+
+                        let overlaps = false;
+
+                        for (const packed of bin.items) {
+
+                            if (this.checkOverlap(dims, point, packed.rotatedDimensions, packed.position)) {
+
+                                overlaps = true;
+
+                                break;
+
+                            }
+
+                        }
+
+
+
+                        if (!overlaps) {
+
+                            bin.items.push({
+
+                                item: item,
+
+                                position: point,
+
+                                rotatedDimensions: dims
+
+                            });
+
+
+
+                            const index = bin.insertion_points.findIndex(p => p[0] === point[0] && p[1] === point[1] && p[2] === point[2]);
+
+                            if (index > -1) bin.insertion_points.splice(index, 1);
+
+
+
+                            const newPoints = [
+
+                                [x + w, y, z],
+
+                                [x, y + d, z],
+
+                                [x, y, z + h]
+
+                            ];
+
+
+
+                            for (const np of newPoints) {
+
+                                if (np[0] < bin.width && np[1] < bin.depth && np[2] < bin.height) {
+
+                                    const isDuplicate = bin.insertion_points.some(p => p[0]===np[0] && p[1]===np[1] && p[2]===np[2]);
+
+                                    if (!isDuplicate) {
+
+                                        let isInside = false;
+
+                                        for (const packed of bin.items) {
+
+                                            const [pw, pd, ph] = packed.rotatedDimensions;
+
+                                            const [px, py, pz] = packed.position;
+
+                                            
+
+                                            if (np[0] > px && np[0] < px + pw &&
+
+                                                np[1] > py && np[1] < py + pd &&
+
+                                                np[2] > pz && np[2] < pz + ph) {
+
+                                                isInside = true;
+
+                                                break;
+
+                                            }
+
+                                        }
+
+                                        if (!isInside) {
+
+                                            bin.insertion_points.push(np);
+
+                                        }
+
+                                    }
+
+                                }
+
+                            }
+
+                            
+
+                            return true;
+
+                        }
+
+                    }
+
+                }
+
+                return false;
+
+            }
+
+
+
+            pack(sampleItem) {
+
+                if (this.bins.length === 0) return [];
+
+                const bin = this.bins[0];
+
+                
+
+                bin.items = [];
+
+                bin.insertion_points = [[0, 0, 0]];
+
+
+
+                let count = 0;
+
+                let safetyBreaker = 0;
+
+                const maxItems = 5000;
+
+
+
+                const itemW = sampleItem.width;
+
+                const itemD = sampleItem.depth;
+
+                const itemH = sampleItem.height;
+
+
+
+                const itemW_real = sampleItem.originalWidth;
+
+                const itemD_real = sampleItem.originalDepth;
+
+                const itemH_real = sampleItem.originalHeight;
+
+                
+
+                log(`Pallet (Usable): ${(bin.width/SCALE_FACTOR).toFixed(2)}x${(bin.depth/SCALE_FACTOR).toFixed(2)}x${(bin.height/SCALE_FACTOR).toFixed(2)} cm. Box (Real): ${itemW_real/SCALE_FACTOR}x${itemD_real/SCALE_FACTOR}x${itemH_real/SCALE_FACTOR} cm`);
+
+
+
+                while(safetyBreaker < maxItems) {
+
+                    const itemInstance = new Item(
+
+                        `Box_${count}`, 
+
+                        itemW, itemD, itemH,
+
+                        itemW_real, itemD_real, itemH_real
+
+                    );
+
+                    
+
+                    if (this.tryFitItemInBin(itemInstance, bin)) {
+
+                        count++;
+
+                    } else {
+
+                        break;
+
+                    }
+
+                    safetyBreaker++;
+
+                }
+
+
+
+                return [bin];
+
+            }
+
+        }
+
+
+
+        // ==========================================
+
+        // 3D VISUALIZATION
+
+        // ==========================================
+
+
+
+        function init3D() {
+
+            const canvas = document.getElementById('canvas-3d');
+
+            renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true });
+
+            renderer.setPixelRatio(window.devicePixelRatio);
+
+            renderer.shadowMap.enabled = true;
+
+
+
+            scene = new THREE.Scene();
+
+            scene.background = new THREE.Color(0xf1f5f9); // Light Gray Background
+
+
+
+            camera = new THREE.PerspectiveCamera(45, canvas.clientWidth / canvas.clientHeight, 0.1, 10000);
+
+            camera.position.set(200, 200, 200);
+
+
+
+            controls = new OrbitControls(camera, canvas);
+
+            controls.enableDamping = true;
+
+
+
+            const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
+
+            scene.add(ambientLight);
+
+            
+
+            const dirLight = new THREE.DirectionalLight(0xffffff, 0.8);
+
+            dirLight.position.set(100, 200, 100);
+
+            dirLight.castShadow = true;
+
+            scene.add(dirLight);
+
+
+
+            packingGroup = new THREE.Group();
+
+            scene.add(packingGroup);
+
+
+
+            const gridHelper = new THREE.GridHelper(300, 10, 0xd1d5db, 0xd1d5db); // Lighter grid
+
+            scene.add(gridHelper);
+
+
+
+            animate();
+
+            
+
+            initProductSelector(); 
+
+            runSimulation();
+
+        }
+
+
+
+        function resizeRenderer() {
+
+            const canvas = renderer.domElement;
+
+            const width = canvas.clientWidth;
+
+            const height = canvas.clientHeight;
+
+            if (canvas.width !== width || canvas.height !== height) {
+
+                renderer.setSize(width, height, false);
+
+                camera.aspect = width / height;
+
+                camera.updateProjectionMatrix();
+
+            }
+
+        }
+
+
+
+        function animate() {
+
+            requestAnimationFrame(animate);
+
+            resizeRenderer();
+
+            controls.update();
+
+            renderer.render(scene, camera);
+
+        }
+
+
+
+        function getItemColor(index) {
+
+            const hue = (index * 137.508) % 360; 
+
+            return new THREE.Color(`hsl(${hue}, 75%, 60%)`);
+
+        }
+
+
+
+        // === vvv FUNCTION UPDATED TO FIX VISUAL BUG vvv ===
+
+        function drawResults(packedBin, bW_original, bD_original) {
+
+            // Clear old group
+
+            while(packingGroup.children.length > 0) {
+
+                const obj = packingGroup.children[0];
+
+                packingGroup.remove(obj);
+
+                if(obj.geometry) obj.geometry.dispose();
+
+                if(obj.material) {
+
+                    if(Array.isArray(obj.material)) obj.material.forEach(m => m.dispose());
+
+                    else obj.material.dispose();
+
+                }
+
+            }
+
+
+
+            if (!packedBin) return;
+
+
+
+            const bW = bW_original;
+
+            const stackHeight = packedBin.height / SCALE_FACTOR;
+
+            const bH_total = stackHeight + PALLET_BASE_HEIGHT;
+
+            const bD = bD_original;
+
+
+
+            // 1. Draw Pallet Base
+
+            const palletBaseGeo = new THREE.BoxGeometry(bW, PALLET_BASE_HEIGHT, bD);
+
+            const palletBaseMat = new THREE.MeshStandardMaterial({ color: 0x603f27, roughness: 0.8 });
+
+            const palletBase = new THREE.Mesh(palletBaseGeo, palletBaseMat);
+
+            palletBase.position.set(bW/2, PALLET_BASE_HEIGHT/2, bD/2);
+
+            packingGroup.add(palletBase);
+
+
+
+
+
+            // 2. Draw Stack Wireframe
+
+            const stackGeo = new THREE.BoxGeometry(bW, stackHeight, bD);
+
+            const edgesGeo = new THREE.EdgesGeometry(stackGeo);
+
+            const edgesMat = new THREE.LineBasicMaterial({ color: 0x334155, linewidth: 2 });
+
+            const stackWireframe = new THREE.LineSegments(edgesGeo, edgesMat);
+
+            stackWireframe.position.set(bW/2, PALLET_BASE_HEIGHT + stackHeight/2, bD/2);
+
+            packingGroup.add(stackWireframe);
+
+
+
+            // 3. Draw Items
+
+            packedBin.items.forEach((entry, i) => {
+
+                
+
+                // === THE FIX ===
+
+                // Get the dimensions THE SOLVER ACTUALLY USED from entry.rotatedDimensions
+
+                const [solver_w_scaled, solver_d_scaled, solver_h_scaled] = entry.rotatedDimensions;
+
+
+
+                // Unscale them for visualization
+
+                const w_vis = solver_w_scaled / SCALE_FACTOR; // Visual Width (X)
+
+                const d_vis = solver_d_scaled / SCALE_FACTOR; // Visual Depth (Z)
+
+                const h_vis = solver_h_scaled / SCALE_FACTOR; // Visual Height (Y)
+
+                // === END FIX ===
+
+
+
+                // Get position
+
+                const [x_scaled, y_scaled, z_scaled] = entry.position;
+
+                const x = x_scaled / SCALE_FACTOR; // Position along Width (X)
+
+                const y = y_scaled / SCALE_FACTOR; // Position along Depth (Z)
+
+                const z = z_scaled / SCALE_FACTOR; // Position along Height (Y)
+
+
+
+                // THREE.BoxGeometry is (width, height, depth) -> (X, Y, Z)
+
+                // We map:
+
+                // Solver W (w_vis) -> Visual X (width)
+
+                // Solver H (h_vis) -> Visual Y (height)
+
+                // Solver D (d_vis) -> Visual Z (depth)
+
+                const itemGeo = new THREE.BoxGeometry(w_vis, h_vis, d_vis); 
+
+                const itemMat = new THREE.MeshStandardMaterial({
+
+                    color: getItemColor(i),
+
+                    roughness: 0.3,
+
+                    metalness: 0.1,
+
+                    transparent: true,
+
+                    opacity: 0.9
+
+                });
+
+                const mesh = new THREE.Mesh(itemGeo, itemMat);
+
+                
+
+                // Map solver (x,y,z) to visual (X,Y,Z)
+
+                mesh.position.set(
+
+                    x + w_vis/2,                           // X pos
+
+                    (z + h_vis/2) + PALLET_BASE_HEIGHT,    // Y pos (Height)
+
+                    y + d_vis/2                            // Z pos (Depth)
+
+                );
+
+                
+
+                const edgeGeo = new THREE.EdgesGeometry(itemGeo);
+
+                const edgeMat = new THREE.LineBasicMaterial({ color: 0x000000, opacity: 0.2, transparent: true });
+
+                const edgeLines = new THREE.LineSegments(edgeGeo, edgeMat);
+
+                mesh.add(edgeLines);
+
+
+
+                packingGroup.add(mesh);
+
+            });
+
+
+
+            // 4. Center Camera logic
+
+            const maxSize = Math.max(bW, bH_total, bD);
+
+            
+
+            packingGroup.position.set(-bW/2, 0, -bD/2);
+
+
+
+            const dist = maxSize * 2.5;
+
+            camera.position.set(dist, dist * 0.8, dist);
+
+            camera.lookAt(0, bH_total/2, 0); 
+
+            controls.target.set(0, bH_total/2, 0);
+
+        }
+
+        // === ^^^ END OF UPDATED FUNCTION ^^^ ===
+
+
+
+        // ==========================================
+
+        // UI HANDLER
+
+        // ==========================================
+
+
+
+        function initProductSelector() {
+
+            const selector = document.getElementById('product-selector');
+
+            const widthInput = document.getElementById('item-width');
+
+            const depthInput = document.getElementById('item-depth');
+
+            const heightInput = document.getElementById('item-height');
+
+
+
+            let optionsHTML = '<option value="">-- Select a Product --</option>';
+
+            productDatabase.sort((a, b) => a.name.localeCompare(b.name)); 
+
+            
+
+            productDatabase.forEach((product) => {
+
+                const valueString = `${product.width},${product.depth},${product.height}`;
+
+                optionsHTML += `<option value="${valueString}">
+
+                    ${product.name} (${product.width}x${product.depth}x${product.height})
+
+                </option>`;
+
+            });
+
+            selector.innerHTML = optionsHTML;
+
+
+
+            selector.addEventListener('change', () => {
+
+                const selectedValue = selector.value;
+
+                if (selectedValue) {
+
+                    const [w, d, h] = selectedValue.split(',').map(Number);
+
+                    widthInput.value = w;
+
+                    depthInput.value = d;
+
+                    heightInput.value = h;
+
+                }
+
+            });
+
+            
+
+            [widthInput, depthInput, heightInput].forEach(input => {
+
+                input.addEventListener('input', () => {
+
+                    const currentValue = `${widthInput.value},${depthInput.value},${heightInput.value}`;
+
+                    const match = productDatabase.some(p => `${p.width},${p.depth},${p.height}` === currentValue);
+
+                    
+
+                    if (!match) {
+
+                        selector.value = "";
+
+                    } else {
+
+                        selector.value = currentValue;
+
+                    }
+
+                });
+
+            });
+
+
+
+            const initialValue = `${widthInput.value},${depthInput.value},${heightInput.value}`;
+
+            if (productDatabase.some(p => `${p.width},${p.depth},${p.height}` === initialValue)) {
+
+                selector.value = initialValue;
+
+            }
+
+        }
+
+
+
+
+
+        const btn = document.getElementById('pack-button');
+
+        
+
+        btn.addEventListener('click', async () => {
+
+            btn.disabled = true;
+
+            btn.textContent = "Calculating...";
+
+            btn.classList.add('opacity-75');
+
+            outputElement.innerHTML = "";
+
+            
+
+            setTimeout(() => {
+
+                try {
+
+                    runSimulation();
+
+                } catch (e) {
+
+                    log("Critical Error: " + e.message, true);
+
+                    console.error(e);
+
+                }
+
+                btn.disabled = false;
+
+                btn.textContent = "Calculate & Visualize";
+
+                btn.classList.remove('opacity-75');
+
+            }, 50);
+
+        });
+
+
+
+        function runSimulation() {
+
+            // --- Get all inputs and store unscaled versions ---
+
+            
+
+            const binValue = document.getElementById('bin-selector').value;
+
+            const [binW_original_unscaled, binD_original_unscaled, binH_usable_unscaled] = binValue.split(',').map(Number);
+
+            
+
+            const tolerance_unscaled = parseFloat(document.getElementById('item-tolerance').value);
+
+
+
+            const itemW_unscaled = parseFloat(document.getElementById('item-width').value) + tolerance_unscaled;
+
+            const itemD_unscaled = parseFloat(document.getElementById('item-depth').value) + tolerance_unscaled;
+
+            const itemH_unscaled = parseFloat(document.getElementById('item-height').value) + tolerance_unscaled;
+
+
+
+            
+
+            // --- Scale all values up by SCALE_FACTOR for the solver ---
+
+            
+
+            const binW = Math.round(binW_original_unscaled * SCALE_FACTOR);
+
+            const binD = Math.round(binD_original_unscaled * SCALE_FACTOR);
+
+            const binH = Math.round(binH_usable_unscaled * SCALE_FACTOR);
+
+            
+
+            const itemW_scaled = Math.round(itemW_unscaled * SCALE_FACTOR);
+
+            const itemD_scaled = Math.round(itemD_unscaled * SCALE_FACTOR);
+
+            const itemH_scaled = Math.round(itemH_unscaled * SCALE_FACTOR);
+
+
+
+            const itemW_solver = itemW_scaled;
+
+            const itemD_solver = itemD_scaled;
+
+            const itemH_solver = itemH_scaled;
+
+
+
+
+
+            // --- Validation ---
+
+            if ([binW_original_unscaled, binD_original_unscaled, binH_usable_unscaled, itemW_unscaled, itemD_unscaled, itemH_unscaled].some(v => isNaN(v) || v < 0)) {
+
+                log("Error: All dimensions must be positive or zero.", true);
+
+                return;
+
+            }
+
+
+
+            const packer = new Packer();
+
+            const sampleItem = new Item("Box", 
+
+                itemW_scaled, itemD_scaled, itemH_scaled, 
+
+                itemW_scaled, itemD_scaled, itemH_scaled
+
+            );
+
+            const rotations = packer.getRotations(sampleItem);
+
+
+
+            const canFit = rotations.some(dims => {
+
+                const [w, d, h] = dims;
+
+                if (w <= binW && d <= binD && h <= binH) return true;
+
+                const perms = [
+
+                    [w, d, h], [w, h, d], [d, w, h], 
+
+                    [d, h, w], [h, w, d], [h, d, w]
+
+                ];
+
+                return perms.some(p => p[0] <= binW && p[1] <= binD && p[2] <= binH);
+
+            });
+
+
+
+            if (!canFit) {
+
+                log(`Error: Item size (${itemW_unscaled.toFixed(1)}x${itemD_unscaled.toFixed(1)}x${itemH_unscaled.toFixed(1)} cm) cannot fit within the usable pallet space (${binW_original_unscaled}x${binD_original_unscaled}x${binH_usable_unscaled} cm).`, true);
+
+                return;
+
+            }
+
+
+
+            const binObj = new Bin("Pallet 1", binW, binD, binH);
+
+            packer.addBin(binObj);
+
+
+
+            // Execute
+
+            const start = performance.now();
+
+            const resultBins = packer.pack(sampleItem);
+
+            const end = performance.now();
+
+
+
+            const filledBin = resultBins[0];
+
+            const count = filledBin.items.length;
+
+            
+
+            // --- Volume calculation update ---
+
+            // We must use the item's original (pre-rotation) volume for this.
+
+            // 'sampleItem.volume' holds the correct pre-rotated volume.
+
+            const usedVol = count * sampleItem.volume; 
+
+            const totalVol = binObj.volume; // Use bin's volume property
+
+            // --- End update ---
+
+            
+
+            const efficiency = totalVol > 0 ? (usedVol / totalVol * 100).toFixed(2) : "0.00";
+
+
+
+            document.getElementById('stats-overlay').classList.remove('hidden');
+
+            document.getElementById('stat-count').textContent = count;
+
+            document.getElementById('stat-efficiency').textContent = efficiency + "%";
+
+
+
+            log(`Calculation finished in ${(end - start).toFixed(2)}ms`);
+
+            log(`Packed ${count} boxes. Pallet total height: ${(binH_usable_unscaled + PALLET_BASE_HEIGHT).toFixed(1)} cm (Stacking height: ${binH_usable_unscaled.toFixed(1)} cm).`);
+
+            
+
+            const scale_vol_factor = Math.pow(SCALE_FACTOR, 3);
+
+            log(`Volume Utilization: ${(usedVol / scale_vol_factor).toFixed(0)} / ${(totalVol / scale_vol_factor).toFixed(0)} cm³ (${efficiency}%)`);
+
+
+
+            drawResults(filledBin, binW_original_unscaled, binD_original_unscaled);
+
+        }
+
+
+
+        // Start Scene
+
+        init3D();
+
+    </script>
+
 </body>
+
 </html>
