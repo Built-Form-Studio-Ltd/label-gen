@@ -20,18 +20,23 @@
         #output::-webkit-scrollbar { width: 8px; height: 8px; }
         #output::-webkit-scrollbar-thumb { background: #4b5563; border-radius: 4px; }
         #output::-webkit-scrollbar-track { background: #1f2937; }
-        /* Style for readonly inputs to look intentional */
         input:read-only { background-color: #f1f5f9; color: #475569; cursor: not-allowed; }
-        /* Simple transition for hiding/showing */
         .collapsible {
             overflow: hidden;
             transition: max-height 0.3s ease-out, opacity 0.2s ease-out;
-            max-height: 500px; /* Set to a value larger than content */
+            max-height: 500px;
             opacity: 1;
         }
         .collapsible.hidden {
             max-height: 0;
             opacity: 0;
+        }
+        /* Custom class for small constraint inputs */
+        .constraint-input {
+            padding-left: 0.5rem;
+            padding-right: 0.5rem;
+            padding-top: 0.5rem;
+            padding-bottom: 0.5rem;
         }
     </style>
 </head>
@@ -82,8 +87,8 @@
                     
                     <label class="block text-xs font-bold text-slate-500 uppercase mb-1" for="bin-selector">Select Pallet Size (W x D x H Usable)</label>
                     <select id="bin-selector" class="w-full p-3 border border-slate-300 bg-white rounded-lg focus:ring-2 focus:ring-indigo-500 focus:outline-none transition appearance-none cursor-pointer">
-                        <option value="120,100,160">UK Pallet (120x100x160 cm)</option> 
-                        <option value="120,80,160" selected>EU Pallet (120x80x160 cm)</option>
+                        <option value="120,100,162">UK Pallet (120x100x162 cm)</option> 
+                        <option value="120,80,164" selected>EU Pallet (120x80x164 cm)</option>
                     </select>
                 </div>
 
@@ -109,24 +114,52 @@
                         </div>
                     </div>
 
-                    <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-md">
-                        <h3 class="flex items-center text-lg font-bold text-slate-800 mb-4">
+                    <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-md space-y-4">
+                        <h3 class="flex items-center text-lg font-bold text-slate-800">
                             <span class="bg-indigo-100 text-indigo-700 w-8 h-8 rounded-full flex items-center justify-center mr-3 text-base font-extrabold shadow">3</span>
                             Carton Constraints
                         </h3>
+                        
                         <div class="grid grid-cols-3 gap-3">
                             <div>
                                 <label class="block text-xs font-bold text-slate-500 uppercase mb-1">Min Items</label>
-                                <input type="number" id="min-items" value="6" min="1" class="w-full p-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:outline-none transition text-sm">
+                                <input type="number" id="min-items" value="0" min="1" class="w-full p-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:outline-none transition text-sm">
                             </div>
                             <div>
                                 <label class="block text-xs font-bold text-slate-500 uppercase mb-1">Max Items</label>
-                                <input type="number" id="max-items" value="12" min="1" class="w-full p-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:outline-none transition text-sm">
+                                <input type="number" id="max-items" value="120" min="1" class="w-full p-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:outline-none transition text-sm">
                             </div>
                             <div>
                                 <label class="block text-xs font-bold text-slate-500 uppercase mb-1">Padding (cm)</label>
-                                <input type="number" id="carton-padding" value="0.5" min="0" step="0.1" class="w-full p-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:outline-none transition text-sm">
+                                <input type="number" id="carton-padding" value="0.0" min="0" step="0.1" class="w-full p-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:outline-none transition text-sm">
                             </div>
+                        </div>
+
+                        <div class="pt-2">
+                             <label class="block text-xs font-bold text-slate-500 uppercase mb-2">Carton Dimension Limits (cm)</label>
+                             <div class="grid grid-cols-3 gap-3">
+                                <div class="space-y-1">
+                                    <label class="block text-xs font-medium text-slate-600">Width (W)</label>
+                                    <div class="flex items-center space-x-1">
+                                        <input type="number" id="min-carton-width" value="20" min="0" placeholder="Min" class="w-full border border-slate-300 rounded-md focus:ring-2 focus:ring-indigo-500 focus:outline-none transition text-sm constraint-input">
+                                        <input type="number" id="max-carton-width" value="60" min="0" placeholder="Max" class="w-full border border-slate-300 rounded-md focus:ring-2 focus:ring-indigo-500 focus:outline-none transition text-sm constraint-input">
+                                    </div>
+                                </div>
+                                <div class="space-y-1">
+                                    <label class="block text-xs font-medium text-slate-600">Depth (D)</label>
+                                    <div class="flex items-center space-x-1">
+                                        <input type="number" id="min-carton-depth" value="20" min="0" placeholder="Min" class="w-full border border-slate-300 rounded-md focus:ring-2 focus:ring-indigo-500 focus:outline-none transition text-sm constraint-input">
+                                        <input type="number" id="max-carton-depth" value="60" min="0" placeholder="Max" class="w-full border border-slate-300 rounded-md focus:ring-2 focus:ring-indigo-500 focus:outline-none transition text-sm constraint-input">
+                                    </div>
+                                </div>
+                                <div class="space-y-1">
+                                    <label class="block text-xs font-medium text-slate-600">Height (H)</label>
+                                    <div class="flex items-center space-x-1">
+                                        <input type="number" id="min-carton-height" value="20" min="0" placeholder="Min" class="w-full border border-slate-300 rounded-md focus:ring-2 focus:ring-indigo-500 focus:outline-none transition text-sm constraint-input">
+                                        <input type="number" id="max-carton-height" value="60" min="0" placeholder="Max" class="w-full border border-slate-300 rounded-md focus:ring-2 focus:ring-indigo-500 focus:outline-none transition text-sm constraint-input">
+                                    </div>
+                                </div>
+                             </div>
                         </div>
                     </div>
                 </div>
@@ -189,9 +222,9 @@
         const outputElement = document.getElementById("output");
         const SCALE_FACTOR = 10; // Use 10 for mm-level precision
         
-        let itemsPerBestCarton = 0; // Store the number of items in the winning carton
-        let lastBestResult = null; // Store the entire winning optimization result object
-        let isManualMode = false; // Controls the UI state
+        let itemsPerBestCarton = 0;
+        let lastBestResult = null;
+        let isManualMode = false;
 
         // --- DOM Elements ---
         const dom = {
@@ -203,7 +236,14 @@
             cartonD: document.getElementById('item-depth'),
             cartonH: document.getElementById('item-height'),
             optimizeBtn: document.getElementById('optimize-button'),
-            packBtn: document.getElementById('pack-button')
+            packBtn: document.getElementById('pack-button'),
+            // New constraint inputs
+            minCartonW: document.getElementById('min-carton-width'),
+            maxCartonW: document.getElementById('max-carton-width'),
+            minCartonD: document.getElementById('min-carton-depth'),
+            maxCartonD: document.getElementById('max-carton-depth'),
+            minCartonH: document.getElementById('min-carton-height'),
+            maxCartonH: document.getElementById('max-carton-height')
         };
 
         // --- Logging Helper ---
@@ -412,11 +452,7 @@
             return new THREE.Color(`hsl(${hue}, 75%, 60%)`);
         }
 
-        /**
-         * Draws the main pallet and all packed cartons.
-         */
         function drawResults(packedBin, bW_original, bD_original) {
-            // 1. Clear old pallet
             while(packingGroup.children.length > 0) {
                 const obj = packingGroup.children[0];
                 packingGroup.remove(obj);
@@ -433,14 +469,12 @@
             const bH_total = stackHeight + PALLET_BASE_HEIGHT;
             const bD = bD_original;
 
-            // 2. Draw Pallet Base
             const palletBaseGeo = new THREE.BoxGeometry(bW, PALLET_BASE_HEIGHT, bD);
             const palletBaseMat = new THREE.MeshStandardMaterial({ color: 0x603f27, roughness: 0.8 });
             const palletBase = new THREE.Mesh(palletBaseGeo, palletBaseMat);
             palletBase.position.set(bW/2, PALLET_BASE_HEIGHT/2, bD/2);
             packingGroup.add(palletBase);
 
-            // 3. Draw Stack Wireframe
             const stackGeo = new THREE.BoxGeometry(bW, stackHeight, bD);
             const edgesGeo = new THREE.EdgesGeometry(stackGeo);
             const edgesMat = new THREE.LineBasicMaterial({ color: 0x334155, linewidth: 2 });
@@ -448,7 +482,6 @@
             stackWireframe.position.set(bW/2, PALLET_BASE_HEIGHT + stackHeight/2, bD/2);
             packingGroup.add(stackWireframe);
 
-            // 4. Draw Items (Cartons)
             packedBin.items.forEach((entry, i) => {
                 const [solver_w_scaled, solver_d_scaled, solver_h_scaled] = entry.rotatedDimensions;
                 const w_vis = solver_w_scaled / SCALE_FACTOR;
@@ -477,25 +510,18 @@
                 packingGroup.add(mesh);
             });
 
-            // 5. Center Camera
             const maxSize = Math.max(bW, bH_total, bD);
-            packingGroup.position.set(-bW/2, 0, -bD/2); // Center the pallet at origin
+            packingGroup.position.set(-bW/2, 0, -bD/2);
             const dist = maxSize * 2.5;
             camera.position.set(dist, dist * 0.8, dist);
             camera.lookAt(0, bH_total/2, 0); 
             controls.target.set(0, bH_total/2, 0);
 
-            // 6. Position the reference carton group
-            // Place it 100cm to the "right" of the pallet (positive X)
             referenceCartonGroup.position.set((bW_original / 2) + 100, bH_total / 2, -bD_original / 2);
-            referenceCartonGroup.rotation.set(0, 0, 0); // Reset rotation
+            referenceCartonGroup.rotation.set(0, 0, 0);
         }
 
-        /**
-         * Draws the single, exploded reference carton with products inside.
-         */
         function drawReferenceCarton(result) {
-            // 1. Clear old reference carton
             while(referenceCartonGroup.children.length > 0) {
                 const obj = referenceCartonGroup.children[0];
                 referenceCartonGroup.remove(obj);
@@ -507,25 +533,23 @@
             }
 
             if (!result || !result.productRotation || !result.productLayout) {
-                return; // No optimization data, don't draw anything
+                return;
             }
 
-            // 3. Get data (unscaled)
             const [cW, cD, cH] = [result.cartonW, result.cartonD, result.cartonH].map(Number);
             const [pW, pD, pH] = result.productRotation;
             const [layoutI, layoutJ, layoutK] = result.productLayout;
-            const padding = result.padding / 2; // Padding per side
+            const padding = result.padding / 2;
 
-            // 4. Draw Carton (semi-transparent)
-            const cartonGeo = new THREE.BoxGeometry(cW, cH, cD); // (THREE.js: W, H, D)
+            const cartonGeo = new THREE.BoxGeometry(cW, cH, cD);
             const cartonMat = new THREE.MeshStandardMaterial({
-                color: 0x603f27, // Brown
+                color: 0x603f27,
                 transparent: true,
                 opacity: 0.15,
                 depthWrite: false
             });
             const cartonMesh = new THREE.Mesh(cartonGeo, cartonMat);
-            cartonMesh.position.set(cW / 2, cH / 2, cD / 2); // Center itself
+            cartonMesh.position.set(cW / 2, cH / 2, cD / 2);
 
             const edgesGeo = new THREE.EdgesGeometry(cartonGeo);
             const edgesMat = new THREE.LineBasicMaterial({ color: 0x603f27, opacity: 0.5 });
@@ -533,13 +557,12 @@
             cartonMesh.add(edgesMesh);
             referenceCartonGroup.add(cartonMesh);
 
-            // 5. Draw Products
-            const productGeo = new THREE.BoxGeometry(pW, pH, pD); // (THREE.js: W, H, D)
+            const productGeo = new THREE.BoxGeometry(pW, pH, pD);
             
             let productIndex = 0;
-            for (let i = 0; i < layoutI; i++) { // Solver W -> Three.js X
-                for (let j = 0; j < layoutJ; j++) { // Solver D -> Three.js Z
-                    for (let k = 0; k < layoutK; k++) { // Solver H -> Three.js Y
+            for (let i = 0; i < layoutI; i++) {
+                for (let j = 0; j < layoutJ; j++) {
+                    for (let k = 0; k < layoutK; k++) {
                         
                         const productMat = new THREE.MeshStandardMaterial({ color: getItemColor(productIndex++) });
                         const productMesh = new THREE.Mesh(productGeo, productMat);
@@ -638,6 +661,14 @@
             const padding = parseFloat(document.getElementById('carton-padding').value) * 2;
             const tolerance = parseFloat(document.getElementById('item-tolerance').value);
 
+            // *** NEW: Get carton dimension constraints ***
+            const minCartonW = parseFloat(dom.minCartonW.value) || 0;
+            const maxCartonW = parseFloat(dom.maxCartonW.value) || Infinity;
+            const minCartonD = parseFloat(dom.minCartonD.value) || 0;
+            const maxCartonD = parseFloat(dom.maxCartonD.value) || Infinity;
+            const minCartonH = parseFloat(dom.minCartonH.value) || 0;
+            const maxCartonH = parseFloat(dom.maxCartonH.value) || Infinity;
+
             let bestResult = { totalProducts: 0, cartonW: 0, cartonD: 0, cartonH: 0, itemsPerCarton: 0, cartonCount: 0 };
             let testedCartons = 0;
             const uniqueCartons = new Set();
@@ -658,6 +689,18 @@
                             const extW = ciW + padding + tolerance;
                             const extD = ciD + padding + tolerance;
                             const extH = ciH + padding + tolerance;
+                            
+                            // *** NEW: Apply carton dimension constraints ***
+                            // Check all 6 permutations of the carton against the constraints
+                            const cartonDims = [extW, extD, extH];
+                            const fitsConstraints = getPermutations(cartonDims).some(dims =>
+                                (dims[0] >= minCartonW && dims[0] <= maxCartonW) &&
+                                (dims[1] >= minCartonD && dims[1] <= maxCartonD) &&
+                                (dims[2] >= minCartonH && dims[2] <= maxCartonH)
+                            );
+                            if (!fitsConstraints) {
+                                continue; // This carton size is disallowed by the user
+                            }
                             
                             const cartonKey = [extW, extD, extH].sort((a,b) => a-b).join(',');
                             if (uniqueCartons.has(cartonKey)) continue;
@@ -693,7 +736,6 @@
                                     productLayout: perm,
                                     padding: padding
                                 };
-                                // *** REAL-TIME FEEDBACK ***
                                 log(`... New Best: ${bestResult.totalProducts} products (${bestResult.cartonCount} x ${n} items)`);
                             }
                         }
@@ -715,10 +757,10 @@
                 itemsPerBestCarton = bestResult.itemsPerCarton;
                 lastBestResult = { ...bestResult };
                 
-                return true; // Success
+                return true;
             } else {
-                log("Error: No valid carton configuration found.", true);
-                return false; // Failure
+                log("Error: No valid carton configuration found within all constraints.", true);
+                return false;
             }
         }
 
@@ -728,28 +770,20 @@
         
         function updateUIMode() {
             if (isManualMode) {
-                // --- MANUAL MODE ---
                 dom.modeToggle.textContent = "Switch to Optimizer Mode";
-                // Show manual, hide optimizer
                 dom.optimizerInputs.classList.add('hidden');
                 dom.packBtn.classList.remove('hidden');
                 dom.optimizeBtn.classList.add('hidden');
-                // Set title
                 dom.manualInputsTitle.innerHTML = `<span class="bg-indigo-100 text-indigo-700 w-8 h-8 rounded-full flex items-center justify-center mr-3 text-base font-extrabold shadow">2</span> Manual Carton Dimensions`;
-                // Make inputs writable
                 dom.cartonW.readOnly = false;
                 dom.cartonD.readOnly = false;
                 dom.cartonH.readOnly = false;
             } else {
-                // --- OPTIMIZER MODE ---
                 dom.modeToggle.textContent = "Switch to Manual Mode";
-                // Show optimizer, hide manual
                 dom.optimizerInputs.classList.remove('hidden');
                 dom.packBtn.classList.add('hidden');
                 dom.optimizeBtn.classList.remove('hidden');
-                // Set title
                 dom.manualInputsTitle.innerHTML = `<span class="bg-indigo-100 text-indigo-700 w-8 h-8 rounded-full flex items-center justify-center mr-3 text-base font-extrabold shadow">4</span> Carton Dimensions (Result)`;
-                // Make inputs readonly
                 dom.cartonW.readOnly = true;
                 dom.cartonD.readOnly = true;
                 dom.cartonH.readOnly = true;
@@ -789,7 +823,7 @@
 
             if (!canFit) {
                 if(doLog) log(`Error: Item size (${itemW_unscaled.toFixed(1)}x${itemD_unscaled.toFixed(1)}x${itemH_unscaled.toFixed(1)} cm) cannot fit in pallet.`, true);
-                drawResults(null, binW_original_unscaled, binD_original_unscaled); // Draw empty pallet
+                drawResults(null, binW_original_unscaled, binD_original_unscaled);
                 return;
             }
 
@@ -807,8 +841,7 @@
             const totalVol = binObj.volume;
             const efficiency = totalVol > 0 ? (usedVol / totalVol * 100).toFixed(2) : "0.00";
 
-            // Update Stats
-            const totalProducts = count * itemsPerBestCarton; // Will be 0 in manual mode, which is correct
+            const totalProducts = count * itemsPerBestCarton;
             document.getElementById('stats-overlay').classList.remove('hidden');
             document.getElementById('stat-count').textContent = count;
             document.getElementById('stat-total-products').textContent = totalProducts;
@@ -825,8 +858,6 @@
             }
             
             drawResults(filledBin, binW_original_unscaled, binD_original_unscaled);
-
-            // Draw 3D Reference Carton (if we have data from an optimization)
             drawReferenceCarton(lastBestResult);
         }
 
@@ -842,13 +873,12 @@
             dom.packBtn.textContent = "Calculating...";
             outputElement.innerHTML = "";
             
-            // Clear optimization data for a manual run
             itemsPerBestCarton = 0; 
             lastBestResult = null;
             
             setTimeout(() => {
                 try {
-                    runSimulation(true); // Run with logging
+                    runSimulation(true);
                 } catch (e) {
                     log("Critical Error: " + e.message, true);
                     console.error(e);
@@ -870,9 +900,9 @@
             
             setTimeout(async () => {
                 try {
-                    const success = await findOptimalCarton(); // This will populate lastBestResult
+                    const success = await findOptimalCarton();
                     if (success) {
-                        runSimulation(true); // Run visualization of the winning result
+                        runSimulation(true);
                     }
                 } catch (e) {
                     log("Critical Optimization Error: " + e.message, true);
