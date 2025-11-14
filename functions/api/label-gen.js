@@ -119,7 +119,7 @@ export async function onRequest(context) {
     const gapX = mmToPt(9.066), gapY = mmToPt(3.679);  // Keep the 3pt gaps
 
     // 3. CALCULATE margins to center the grid on the page
-    const marginX = mmToPt(5.445)
+    const marginX = mmToPt(6.445)
     const marginY = mmToPt(7.385)
 
     for (let r = 0; r < rows; r++) {
