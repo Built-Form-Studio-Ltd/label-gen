@@ -1,0 +1,867 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+    <title>3D Pallet Packing Optimizer & Visualizer</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script type="importmap">
+        {
+            "imports": {
+                "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+                "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"
+            }
+        }
+    </script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@100..900&display=swap');
+        body { font-family: "Inter", sans-serif; }
+        canvas { outline: none; cursor: grab; }
+        #output::-webkit-scrollbar { width: 8px; height: 8px; }
+        #output::-webkit-scrollbar-thumb { background: #4b5563; border-radius: 4px; }
+        #output::-webkit-scrollbar-track { background: #1f2937; }
+        input[readonly] { background-color: #f1f5f9; color: #475569; }
+    </style>
+</head>
+<body class="bg-gray-50 text-slate-800 p-4 md:p-8 min-h-screen"> 
+
+    <div class="max-w-7xl mx-auto bg-white rounded-2xl shadow-2xl border border-slate-200 overflow-hidden">
+        <div class="p-6 grid grid-cols-1 lg:grid-cols-5 gap-6 lg:gap-8">
+            
+            <div class="lg:col-span-3 flex flex-col order-1 lg:order-2">
+                <div class="relative bg-slate-100 rounded-xl border border-slate-300 overflow-hidden shadow-lg flex-grow min-h-[500px] lg:min-h-[700px]">
+                    <canvas id="canvas-3d" class="w-full h-full block outline-none"></canvas>
+                    
+                    <div class="absolute top-4 left-4 bg-white/90 backdrop-blur-sm p-3 rounded-lg shadow border border-slate-200 text-xs text-slate-600 pointer-events-none select-none">
+                        <p class="font-bold text-slate-800 mb-1">Controls:</p>
+                        <ul class="list-disc list-inside space-y-0.5">
+                            <li>Left Click + Drag to Rotate</li>
+                            <li>Right Click + Drag to Pan</li>
+                            <li>Scroll to Zoom</li>
+                        </ul>
+                    </div>
+                    <div id="stats-overlay" class="hidden absolute bottom-4 right-4 bg-slate-900/90 backdrop-blur text-white p-4 rounded-xl shadow-2xl border border-slate-700 text-sm">
+                        <div class="grid grid-cols-2 gap-x-6 gap-y-1">
+                            <span class="text-slate-400">Packed Cartons:</span>
+                            <span class="font-mono font-bold text-green-400 text-right" id="stat-count">0</span>
+                            <span class="text-slate-400">Total Products:</span>
+                            <span class="font-mono font-bold text-cyan-400 text-right" id="stat-total-products">0</span>
+                            <span class="text-slate-400">Vol. Efficiency:</span>
+                            <span class="font-mono font-bold text-yellow-400 text-right" id="stat-efficiency">0%</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="lg:col-span-2 space-y-6 order-2 lg:order-1">
+                
+                <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-md">
+                    <h3 class="flex items-center text-lg font-bold text-slate-800 mb-4">
+                        <span class="bg-indigo-100 text-indigo-700 w-8 h-8 rounded-full flex items-center justify-center mr-3 text-base font-extrabold shadow">1</span>
+                        Pallet Dimensions (cm)
+                    </h3>
+                    
+                    <label class="block text-xs font-bold text-slate-500 uppercase mb-1" for="bin-selector">Select Pallet Size (W x D x H Usable)</label>
+                    <select id="bin-selector" class="w-full p-3 border border-slate-300 bg-white rounded-lg focus:ring-2 focus:ring-indigo-500 focus:outline-none transition appearance-none cursor-pointer">
+                        <option value="120,100,160">UK Pallet (120x100x160 cm)</option> 
+                        <option value="120,80,160" selected>EU Pallet (120x80x160 cm)</option>
+                    </select>
+                </div>
+
+                <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-md">
+                    <h3 class="flex items-center text-lg font-bold text-slate-800 mb-4">
+                        <span class="bg-indigo-100 text-indigo-700 w-8 h-8 rounded-full flex items-center justify-center mr-3 text-base font-extrabold shadow">2</span>
+                        Product Dimensions (cm)
+                    </h3>
+                    <div class="grid grid-cols-3 gap-3">
+                        <div>
+                            <label class="block text-xs font-bold text-slate-500 uppercase mb-1">Width (W)</label>
+                            <input type="number" id="product-width" value="20" min="0" class="w-full p-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:outline-none transition text-sm">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-bold text-slate-500 uppercase mb-1">Depth (D)</label>
+                            <input type="number" id="product-depth" value="15" min="0" class="w-full p-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:outline-none transition text-sm">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-bold text-slate-500 uppercase mb-1">Height (H)</label>
+                            <input type="number" id="product-height" value="10" min="0" class="w-full p-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:outline-none transition text-sm">
+                        </div>
+                    </div>
+                </div>
+
+                <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-md">
+                    <h3 class="flex items-center text-lg font-bold text-slate-800 mb-4">
+                        <span class="bg-indigo-100 text-indigo-700 w-8 h-8 rounded-full flex items-center justify-center mr-3 text-base font-extrabold shadow">3</span>
+                        Carton Constraints
+                    </h3>
+                    <div class="grid grid-cols-3 gap-3">
+                        <div>
+                            <label class="block text-xs font-bold text-slate-500 uppercase mb-1">Min Items</label>
+                            <input type="number" id="min-items" value="6" min="1" class="w-full p-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:outline-none transition text-sm">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-bold text-slate-500 uppercase mb-1">Max Items</label>
+                            <input type="number" id="max-items" value="12" min="1" class="w-full p-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:outline-none transition text-sm">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-bold text-slate-500 uppercase mb-1">Padding (cm)</label>
+                            <input type="number" id="carton-padding" value="0.5" min="0" step="0.1" class="w-full p-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:outline-none transition text-sm">
+                        </div>
+                    </div>
+                </div>
+
+                <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-md">
+                    <h3 class="flex items-center text-lg font-bold text-slate-800 mb-4">
+                        <span class="bg-indigo-100 text-indigo-700 w-8 h-8 rounded-full flex items-center justify-center mr-3 text-base font-extrabold shadow">4</span>
+                        Carton Dimensions (Result)
+                    </h3>
+                    <div class="grid grid-cols-3 gap-3">
+                        <div>
+                            <label class="block text-xs font-bold text-slate-500 uppercase mb-1">Width (W)</label>
+                            <input type="number" id="item-width" value="41.00" min="0" readonly class="w-full p-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:outline-none transition text-sm">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-bold text-slate-500 uppercase mb-1">Depth (D)</label>
+                            <input type="number" id="item-depth" value="31.00" min="0" readonly class="w-full p-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:outline-none transition text-sm">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-bold text-slate-500 uppercase mb-1">Height (H)</label>
+                            <input type="number" id="item-height" value="31.00" min="0" readonly class="w-full p-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:outline-none transition text-sm">
+                        </div>
+                    </div>
+                     <div class="mt-4">
+                        <label class="block text-xs font-bold text-slate-500 uppercase mb-1" for="item-tolerance">Box Spacing/Tolerance (cm)</label>
+                        <select id="item-tolerance" class="w-full p-3 border border-slate-300 bg-white rounded-lg focus:ring-2 focus:ring-indigo-500 focus:outline-none transition appearance-none cursor-pointer text-sm">
+                            <option value="0.0" selected>0.0 (None)</option>
+                            <option value="0.1">0.1</option>
+                            <option value="0.2">0.2</option>
+                            <option value="0.3">0.3</option>
+                            <option value="0.4">0.4</option>
+                            <option value="0.5">0.5</option>
+                        </select>
+                    </div>
+                </div>
+                
+                <button id="optimize-button" class="w-full bg-purple-600 hover:bg-purple-700 text-white font-extrabold py-4 px-6 rounded-xl shadow-lg transition duration-200 transform hover:scale-[1.01] text-lg uppercase tracking-wider disabled:bg-purple-400 disabled:cursor-not-allowed">
+                    Find Optimal Carton
+                </button>
+                <button id="pack-button" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-extrabold py-4 px-6 rounded-xl shadow-lg transition duration-200 transform hover:scale-[1.01] text-lg uppercase tracking-wider disabled:bg-indigo-400 disabled:cursor-not-allowed">
+                    Visualize Current Carton
+                </button>
+
+                <div class="bg-slate-900 rounded-xl overflow-hidden shadow-xl border border-slate-700">
+                    <div class="bg-slate-800 px-4 py-2 border-b border-slate-700 text-xs font-mono text-slate-400 uppercase font-bold">System Log</div>
+                    <pre id="output" class="p-4 text-xs text-green-400 font-mono h-48 overflow-y-auto whitespace-pre-wrap"></pre>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script type="module">
+        import * as THREE from 'three';
+        import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+
+        // --- Global Variables ---
+        let scene, camera, renderer, controls, packingGroup, referenceCartonGroup;
+        const PALLET_BASE_HEIGHT = 20; // 20cm
+        const outputElement = document.getElementById("output");
+        const SCALE_FACTOR = 10; // Use 10 for mm-level precision
+        
+        let itemsPerBestCarton = 0; // Store the number of items in the winning carton
+        let lastBestResult = null; // Store the entire winning optimization result object
+
+        // --- Logging Helper ---
+        function log(message, isError = false) {
+            const timestamp = new Date().toLocaleTimeString();
+            const colorClass = isError ? 'text-red-400' : 'text-green-400';
+            console.log(message);
+            outputElement.innerHTML += `<span class="text-slate-500">[${timestamp}]</span> <span class="${colorClass}">${message}</span>\n`;
+            outputElement.scrollTop = outputElement.scrollHeight;
+        }
+
+        // ==========================================
+        // ALGORITHM CLASSES
+        // ==========================================
+        class Item {
+            constructor(name, width, depth, height, originalWidth, originalDepth, originalHeight) {
+                this.name = name;
+                this.width = width;   // Scaled W for solver
+                this.depth = depth;   // Scaled D for solver
+                this.height = height; // Scaled H for solver
+                this.originalWidth = originalWidth;     // Scaled W
+                this.originalDepth = originalDepth;     // Scaled D
+                this.originalHeight = originalHeight;   // Scaled H
+                this.volume = originalWidth * originalDepth * originalHeight;
+            }
+            getDimensions() { return [this.width, this.depth, this.height]; }
+        }
+
+        class Bin {
+            constructor(name, width, depth, height) {
+                this.name = name;
+                this.width = width;
+                this.depth = depth;
+                this.height = height;
+                this.volume = width * depth * height;
+                this.items = [];
+                this.insertion_points = [[0, 0, 0]];
+            }
+        }
+
+        class Packer {
+            constructor() {
+                this.bins = [];
+            }
+            addBin(bin) { this.bins.push(bin); }
+
+            getRotations(item) {
+                const [w, d, h] = item.getDimensions();
+                const allRotations = [
+                    [w, d, h], [w, h, d], [d, w, h], 
+                    [d, h, w], [h, w, d], [h, d, w]
+                ];
+                const seen = new Set();
+                return allRotations.filter(r => {
+                    const key = JSON.stringify(r.sort((a,b) => a - b)); // Sort to find unique dimension sets
+                    const isNew = !seen.has(key);
+                    seen.add(key);
+                    return isNew;
+                });
+            }
+
+            checkOverlap(itemDims, itemPos, existingItemDims, existingItemPos) {
+                const [w1, d1, h1] = itemDims;
+                const [x1, y1, z1] = itemPos;
+                const [w2, d2, h2] = existingItemDims;
+                const [x2, y2, z2] = existingItemPos;
+                return !(x1 + w1 <= x2 || x1 >= x2 + w2 ||
+                         y1 + d1 <= y2 || y1 >= y2 + d2 ||
+                         z1 + h1 <= z2 || z1 >= z2 + h2);
+            }
+
+            tryFitItemInBin(item, bin) {
+                const sortedPoints = [...bin.insertion_points].sort((a, b) => {
+                    return a[2] - b[2] || a[1] - b[1] || a[0] - b[0];
+                });
+                const rotations = this.getRotations(item);
+
+                for (const point of sortedPoints) {
+                    const [x, y, z] = point;
+                    for (const dims of rotations) {
+                        const [w, d, h] = dims;
+                        if (x + w > bin.width || y + d > bin.depth || z + h > bin.height) {
+                            continue;
+                        }
+                        let overlaps = false;
+                        for (const packed of bin.items) {
+                            if (this.checkOverlap(dims, point, packed.rotatedDimensions, packed.position)) {
+                                overlaps = true;
+                                break;
+                            }
+                        }
+                        if (!overlaps) {
+                            bin.items.push({
+                                item: item,
+                                position: point,
+                                rotatedDimensions: dims
+                            });
+                            const index = bin.insertion_points.findIndex(p => p[0] === point[0] && p[1] === point[1] && p[2] === point[2]);
+                            if (index > -1) bin.insertion_points.splice(index, 1);
+
+                            const newPoints = [
+                                [x + w, y, z],
+                                [x, y + d, z],
+                                [x, y, z + h]
+                            ];
+                            for (const np of newPoints) {
+                                if (np[0] < bin.width && np[1] < bin.depth && np[2] < bin.height) {
+                                    const isDuplicate = bin.insertion_points.some(p => p[0]===np[0] && p[1]===np[1] && p[2]===np[2]);
+                                    if (!isDuplicate) {
+                                        let isInside = false;
+                                        for (const packed of bin.items) {
+                                            const [pw, pd, ph] = packed.rotatedDimensions;
+                                            const [px, py, pz] = packed.position;
+                                            if (np[0] > px && np[0] < px + pw &&
+                                                np[1] > py && np[1] < py + pd &&
+                                                np[2] > pz && np[2] < pz + ph) {
+                                                isInside = true;
+                                                break;
+                                            }
+                                        }
+                                        if (!isInside) {
+                                            bin.insertion_points.push(np);
+                                        }
+                                    }
+                                }
+                            }
+                            return true;
+                        }
+                    }
+                }
+                return false;
+            }
+
+            pack(sampleItem) {
+                if (this.bins.length === 0) return [];
+                const bin = this.bins[0];
+                bin.items = [];
+                bin.insertion_points = [[0, 0, 0]];
+                let count = 0;
+                let safetyBreaker = 0;
+                const maxItems = 5000;
+                const itemW = sampleItem.width;
+                const itemD = sampleItem.depth;
+                const itemH = sampleItem.height;
+                const itemW_real = sampleItem.originalWidth;
+                const itemD_real = sampleItem.originalDepth;
+                const itemH_real = sampleItem.originalHeight;
+
+                while(safetyBreaker < maxItems) {
+                    const itemInstance = new Item(`Box_${count}`, itemW, itemD, itemH, itemW_real, itemD_real, itemH_real);
+                    if (this.tryFitItemInBin(itemInstance, bin)) {
+                        count++;
+                    } else {
+                        break;
+                    }
+                    safetyBreaker++;
+                }
+                return [bin];
+            }
+        }
+
+        // ==========================================
+        // 3D VISUALIZATION
+        // ==========================================
+        function init3D() {
+            const canvas = document.getElementById('canvas-3d');
+            renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true });
+            renderer.setPixelRatio(window.devicePixelRatio);
+            renderer.shadowMap.enabled = true;
+            scene = new THREE.Scene();
+            scene.background = new THREE.Color(0xf1f5f9);
+            camera = new THREE.PerspectiveCamera(45, canvas.clientWidth / canvas.clientHeight, 0.1, 10000);
+            camera.position.set(200, 200, 200);
+            controls = new OrbitControls(camera, canvas);
+            controls.enableDamping = true;
+            const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
+            scene.add(ambientLight);
+            const dirLight = new THREE.DirectionalLight(0xffffff, 0.8);
+            dirLight.position.set(100, 200, 100);
+            dirLight.castShadow = true;
+            scene.add(dirLight);
+            
+            packingGroup = new THREE.Group();
+            scene.add(packingGroup);
+            
+            referenceCartonGroup = new THREE.Group();
+            scene.add(referenceCartonGroup);
+
+            const gridHelper = new THREE.GridHelper(400, 20, 0xd1d5db, 0xd1d5db);
+            scene.add(gridHelper);
+            
+            animate();
+            runSimulation(false); // Run a default simulation on load
+        }
+        function resizeRenderer() {
+            const canvas = renderer.domElement;
+            const width = canvas.clientWidth;
+            const height = canvas.clientHeight;
+            if (canvas.width !== width || canvas.height !== height) {
+                renderer.setSize(width, height, false);
+                camera.aspect = width / height;
+                camera.updateProjectionMatrix();
+            }
+        }
+        function animate() {
+            requestAnimationFrame(animate);
+            resizeRenderer();
+            controls.update();
+            renderer.render(scene, camera);
+        }
+        function getItemColor(index) {
+            const hue = (index * 137.508) % 360; 
+            return new THREE.Color(`hsl(${hue}, 75%, 60%)`);
+        }
+
+        /**
+         * Draws the main pallet and all packed cartons.
+         */
+        function drawResults(packedBin, bW_original, bD_original) {
+            while(packingGroup.children.length > 0) {
+                const obj = packingGroup.children[0];
+                packingGroup.remove(obj);
+                if(obj.geometry) obj.geometry.dispose();
+                if(obj.material) {
+                    if(Array.isArray(obj.material)) obj.material.forEach(m => m.dispose());
+                    else obj.material.dispose();
+                }
+            }
+            if (!packedBin) return;
+
+            const bW = bW_original;
+            const stackHeight = packedBin.height / SCALE_FACTOR;
+            const bH_total = stackHeight + PALLET_BASE_HEIGHT;
+            const bD = bD_original;
+
+            // 1. Draw Pallet Base
+            const palletBaseGeo = new THREE.BoxGeometry(bW, PALLET_BASE_HEIGHT, bD);
+            const palletBaseMat = new THREE.MeshStandardMaterial({ color: 0x603f27, roughness: 0.8 });
+            const palletBase = new THREE.Mesh(palletBaseGeo, palletBaseMat);
+            palletBase.position.set(bW/2, PALLET_BASE_HEIGHT/2, bD/2);
+            packingGroup.add(palletBase);
+
+            // 2. Draw Stack Wireframe
+            const stackGeo = new THREE.BoxGeometry(bW, stackHeight, bD);
+            const edgesGeo = new THREE.EdgesGeometry(stackGeo);
+            const edgesMat = new THREE.LineBasicMaterial({ color: 0x334155, linewidth: 2 });
+            const stackWireframe = new THREE.LineSegments(edgesGeo, edgesMat);
+            stackWireframe.position.set(bW/2, PALLET_BASE_HEIGHT + stackHeight/2, bD/2);
+            packingGroup.add(stackWireframe);
+
+            // 3. Draw Items (Cartons)
+            packedBin.items.forEach((entry, i) => {
+                const [solver_w_scaled, solver_d_scaled, solver_h_scaled] = entry.rotatedDimensions;
+                const w_vis = solver_w_scaled / SCALE_FACTOR;
+                const d_vis = solver_d_scaled / SCALE_FACTOR;
+                const h_vis = solver_h_scaled / SCALE_FACTOR;
+
+                const [x_scaled, y_scaled, z_scaled] = entry.position;
+                const x = x_scaled / SCALE_FACTOR;
+                const y = y_scaled / SCALE_FACTOR;
+                const z = z_scaled / SCALE_FACTOR;
+
+                const itemGeo = new THREE.BoxGeometry(w_vis, h_vis, d_vis); 
+                const itemMat = new THREE.MeshStandardMaterial({
+                    color: getItemColor(i),
+                    roughness: 0.3, metalness: 0.1,
+                    transparent: true, opacity: 0.9
+                });
+                const mesh = new THREE.Mesh(itemGeo, itemMat);
+                
+                mesh.position.set(
+                    x + w_vis/2, 
+                    (z + h_vis/2) + PALLET_BASE_HEIGHT, 
+                    y + d_vis/2 
+                );
+                
+                const edgeGeo = new THREE.EdgesGeometry(itemGeo);
+                const edgeMat = new THREE.LineBasicMaterial({ color: 0x000000, opacity: 0.2, transparent: true });
+                const edgeLines = new THREE.LineSegments(edgeGeo, edgeMat);
+                mesh.add(edgeLines);
+                packingGroup.add(mesh);
+            });
+
+            // 4. Center Camera
+            const maxSize = Math.max(bW, bH_total, bD);
+            packingGroup.position.set(-bW/2, 0, -bD/2); // Center the pallet at origin
+            const dist = maxSize * 2.5;
+            camera.position.set(dist, dist * 0.8, dist);
+            camera.lookAt(0, bH_total/2, 0); 
+            controls.target.set(0, bH_total/2, 0);
+
+            // 5. Position the (currently empty) reference carton group
+            // Place it 50cm to the "right" of the pallet (positive X)
+            referenceCartonGroup.position.set((bW_original / 2) + 50, 0, -bD_original / 2);
+        }
+
+        /**
+         * Draws the single, exploded reference carton with products inside.
+         */
+        function drawReferenceCarton(result) {
+            // 1. Clear old reference carton
+            while(referenceCartonGroup.children.length > 0) {
+                const obj = referenceCartonGroup.children[0];
+                referenceCartonGroup.remove(obj);
+                if(obj.geometry) obj.geometry.dispose();
+                if(obj.material) {
+                    if(Array.isArray(obj.material)) obj.material.forEach(m => m.dispose());
+                    else obj.material.dispose();
+                }
+            }
+
+            // 2. Check if we have valid data
+            if (!result || !result.productRotation || !result.productLayout) {
+                return; // No optimization data, don't draw anything
+            }
+
+            // 3. Get data (unscaled)
+            const [cW, cD, cH] = [result.cartonW, result.cartonD, result.cartonH].map(Number);
+            const [pW, pD, pH] = result.productRotation;
+            const [layoutI, layoutJ, layoutK] = result.productLayout;
+            const padding = result.padding / 2; // Padding per side (e.g., 0.5)
+
+            // 4. Draw Carton (semi-transparent)
+            const cartonGeo = new THREE.BoxGeometry(cW, cH, cD); // (THREE.js: W, H, D)
+            const cartonMat = new THREE.MeshStandardMaterial({
+                color: 0x603f27, // Brown
+                transparent: true,
+                opacity: 0.15,
+                depthWrite: false // Prevents visual glitches with transparent objects
+            });
+            const cartonMesh = new THREE.Mesh(cartonGeo, cartonMat);
+            cartonMesh.position.set(cW / 2, cH / 2, cD / 2); // Center itself
+
+            const edgesGeo = new THREE.EdgesGeometry(cartonGeo);
+            const edgesMat = new THREE.LineBasicMaterial({ color: 0x603f27, opacity: 0.5 });
+            const edgesMesh = new THREE.LineSegments(edgesGeo, edgesMat);
+            cartonMesh.add(edgesMesh);
+            referenceCartonGroup.add(cartonMesh);
+
+            // 5. Draw Products
+            const productGeo = new THREE.BoxGeometry(pW, pH, pD); // (THREE.js: W, H, D)
+            
+            let productIndex = 0;
+            for (let i = 0; i < layoutI; i++) { // Solver W -> Three.js X
+                for (let j = 0; j < layoutJ; j++) { // Solver D -> Three.js Z
+                    for (let k = 0; k < layoutK; k++) { // Solver H -> Three.js Y
+                        
+                        const productMat = new THREE.MeshStandardMaterial({ color: getItemColor(productIndex++) });
+                        const productMesh = new THREE.Mesh(productGeo, productMat);
+
+                        // Calculate position
+                        const x = (i * pW) + padding + (pW / 2); // Center of product
+                        const z_depth = (j * pD) + padding + (pD / 2); // Center of product
+                        const y_height = (k * pH) + padding + (pH / 2); // Center of product
+
+                        productMesh.position.set(x, y_height, z_depth);
+                        
+                        // Add outline
+                        const productEdgeGeo = new THREE.EdgesGeometry(productGeo);
+                        const productEdgeMat = new THREE.LineBasicMaterial({ color: 0x000000, opacity: 0.2, transparent: true });
+                        const productEdgeLines = new THREE.LineSegments(productEdgeGeo, productEdgeMat);
+                        productMesh.add(productEdgeLines);
+
+                        referenceCartonGroup.add(productMesh);
+                    }
+                }
+            }
+        }
+
+
+        // ==========================================
+        // OPTIMIZATION LOGIC
+        // ==========================================
+
+        /**
+         * Helper: Gets all permutations of an array
+         */
+        function getPermutations(arr) {
+            if (arr.length === 0) return [[]];
+            const firstEl = arr[0];
+            const rest = arr.slice(1);
+            const permsWithoutFirst = getPermutations(rest);
+            const allPerms = [];
+            permsWithoutFirst.forEach((perm) => {
+                for (let i = 0; i <= perm.length; i++) {
+                    const permWithFirst = [...perm.slice(0, i), firstEl, ...perm.slice(i)];
+                    allPerms.push(permWithFirst);
+                }
+            });
+            const seen = new Set();
+            return allPerms.filter(p => {
+                const key = p.join(',');
+                if (seen.has(key)) return false;
+                seen.add(key);
+                return true;
+            });
+        }
+
+        /**
+         * Helper: Gets 3-integer factor sets
+         */
+        function getIntegerFactorSets(n) {
+            const sets = new Set();
+            for (let i = 1; i * i * i <= n; i++) {
+                if (n % i === 0) {
+                    for (let j = i; i * j * j <= n; j++) {
+                        if ((n / i) % j === 0) {
+                            const k = n / (i * j);
+                            if (Number.isInteger(k)) {
+                                const sorted = [i, j, k].sort((a, b) => a - b);
+                                sets.add(sorted.join(','));
+                            }
+                        }
+                    }
+                }
+            }
+            return Array.from(sets).map(s => s.split(',').map(Number));
+        }
+
+        /**
+         * Runs a single packing simulation IN MEMORY.
+         */
+        function simulatePacking(palletBin, cartonItem) {
+            const packer = new Packer();
+            packer.addBin(palletBin);
+            palletBin.items = [];
+            palletBin.insertion_points = [[0, 0, 0]];
+            const resultBins = packer.pack(cartonItem);
+            return resultBins[0].items.length;
+        }
+
+        async function findOptimalCarton() {
+            log("--- 🚀 Starting Optimization ---");
+            // 1. Get Pallet Dims
+            const binValue = document.getElementById('bin-selector').value;
+            const [binW_unscaled, binD_unscaled, binH_usable_unscaled] = binValue.split(',').map(Number);
+            const palletBin = new Bin("Pallet", 
+                Math.round(binW_unscaled * SCALE_FACTOR),
+                Math.round(binD_unscaled * SCALE_FACTOR),
+                Math.round(binH_usable_unscaled * SCALE_FACTOR)
+            );
+            
+            // 2. Get Product Dims
+            const pW = parseFloat(document.getElementById('product-width').value);
+            const pD = parseFloat(document.getElementById('product-depth').value);
+            const pH = parseFloat(document.getElementById('product-height').value);
+            if ([pW, pD, pH].some(v => isNaN(v) || v <= 0)) {
+                log("Error: Product dimensions must be positive numbers.", true);
+                return null;
+            }
+            const productItem = new Item("Product", pW, pD, pH, pW, pD, pH);
+            const productRotations = new Packer().getRotations(productItem); 
+
+            // 3. Get Constraints
+            const minN = parseInt(document.getElementById('min-items').value);
+            const maxN = parseInt(document.getElementById('max-items').value);
+            const padding = parseFloat(document.getElementById('carton-padding').value) * 2; // Total padding
+            const tolerance = parseFloat(document.getElementById('item-tolerance').value);
+
+            let bestResult = { totalProducts: 0, cartonW: 0, cartonD: 0, cartonH: 0, itemsPerCarton: 0, cartonCount: 0 };
+            let testedCartons = 0;
+            const uniqueCartons = new Set();
+
+            log(`Product Dims: ${pW}x${pD}x${pH}. Item Count: ${minN}-${maxN}. Padding: ${padding/2}cm.`);
+            
+            // --- The Optimization Loop ---
+            for (let n = minN; n <= maxN; n++) {
+                log(`Testing cartons for ${n} products...`);
+                const factorSets = getIntegerFactorSets(n); // e.g., [[1,2,6], [1,3,4]]
+                
+                for (const prodRot of productRotations) { // e.g., [10,15,20]
+                    const [rW, rD, rH] = prodRot;
+                    
+                    for (const factors of factorSets) { // e.g., [1,2,6]
+                        const factorPerms = getPermutations(factors); // [[1,2,6], [1,6,2], ...]
+                        
+                        for (const perm of factorPerms) { // e.g., [1,6,2]
+                            const [i, j, k] = perm;
+                            
+                            const ciW = i * rW; // Internal W
+                            const ciD = j * rD; // Internal D
+                            const ciH = k * rH; // Internal H
+
+                            const extW = ciW + padding + tolerance;
+                            const extD = ciD + padding + tolerance;
+                            const extH = ciH + padding + tolerance;
+                            
+                            const cartonKey = [extW, extD, extH].sort((a,b) => a-b).join(',');
+                            if (uniqueCartons.has(cartonKey)) continue;
+                            uniqueCartons.add(cartonKey);
+                            testedCartons++;
+
+                            const cartonItem = new Item("Carton",
+                                Math.round(extW * SCALE_FACTOR),
+                                Math.round(extD * SCALE_FACTOR),
+                                Math.round(extH * SCALE_FACTOR),
+                                Math.round(extW * SCALE_FACTOR),
+                                Math.round(extD * SCALE_FACTOR),
+                                Math.round(extH * SCALE_FACTOR)
+                            );
+
+                            const canFit = new Packer().getRotations(cartonItem).some(dims => 
+                                dims[0] <= palletBin.width && dims[1] <= palletBin.depth && dims[2] <= palletBin.height
+                            );
+                            if (!canFit) continue;
+
+                            const packedCartonCount = simulatePacking(palletBin, cartonItem);
+                            const totalProducts = packedCartonCount * n;
+
+                            if (totalProducts > bestResult.totalProducts) {
+                                bestResult = {
+                                    totalProducts: totalProducts,
+                                    cartonW: extW.toFixed(2),
+                                    cartonD: extD.toFixed(2),
+                                    cartonH: extH.toFixed(2),
+                                    itemsPerCarton: n,
+                                    cartonCount: packedCartonCount,
+                                    // *** SAVE THE WINNING FORMULA ***
+                                    productRotation: prodRot, // e.g., [20, 15, 10]
+                                    productLayout: perm,     // e.g., [2, 3, 2]
+                                    padding: padding         // e.g., 1.0 (for 0.5 per side)
+                                };
+                            }
+                        }
+                    }
+                }
+            } // --- End of Loop ---
+            
+            log(`--- ✅ Optimization Complete (${testedCartons} unique cartons tested) ---`);
+            if (bestResult.totalProducts > 0) {
+                log(`**Best Carton Found**: ${bestResult.cartonW} x ${bestResult.cartonD} x ${bestResult.cartonH} cm`);
+                log(`**Internal Config**: ${bestResult.itemsPerCarton} products/carton`);
+                log(`**Pallet Fit**: ${bestResult.cartonCount} cartons`);
+                log(`**Total Products**: ${bestResult.totalProducts}`);
+                
+                document.getElementById('item-width').value = bestResult.cartonW;
+                document.getElementById('item-depth').value = bestResult.cartonD;
+                document.getElementById('item-height').value = bestResult.cartonH;
+                
+                itemsPerBestCarton = bestResult.itemsPerCarton;
+                lastBestResult = { ...bestResult }; // Store the winning config globally
+                
+                return true; // Success
+            } else {
+                log("Error: No valid carton configuration found.", true);
+                return false; // Failure
+            }
+        }
+
+        // ==========================================
+        // UI HANDLER
+        // ==========================================
+        
+        function runSimulation(doLog = true) {
+            // --- Get Pallet (Bin) Inputs ---
+            const binValue = document.getElementById('bin-selector').value;
+            const [binW_original_unscaled, binD_original_unscaled, binH_usable_unscaled] = binValue.split(',').map(Number);
+            
+            // --- Get Carton (Item) Inputs ---
+            const tolerance_unscaled = parseFloat(document.getElementById('item-tolerance').value);
+            const itemW_unscaled = parseFloat(document.getElementById('item-width').value) + tolerance_unscaled;
+            const itemD_unscaled = parseFloat(document.getElementById('item-depth').value) + tolerance_unscaled;
+            const itemH_unscaled = parseFloat(document.getElementById('item-height').value) + tolerance_unscaled;
+
+            // --- Scale all values up by SCALE_FACTOR for the solver ---
+            const binW = Math.round(binW_original_unscaled * SCALE_FACTOR);
+            const binD = Math.round(binD_original_unscaled * SCALE_FACTOR);
+            const binH = Math.round(binH_usable_unscaled * SCALE_FACTOR);
+            const itemW_scaled = Math.round(itemW_unscaled * SCALE_FACTOR);
+            const itemD_scaled = Math.round(itemD_unscaled * SCALE_FACTOR);
+            const itemH_scaled = Math.round(itemH_unscaled * SCALE_FACTOR);
+
+            if ([binW, binD, binH, itemW_scaled, itemD_scaled, itemH_scaled].some(v => isNaN(v) || v <= 0)) {
+                if(doLog) log("Error: All dimensions must be positive numbers.", true);
+                return;
+            }
+
+            const packer = new Packer();
+            const sampleItem = new Item("Box", 
+                itemW_scaled, itemD_scaled, itemH_scaled, 
+                itemW_scaled, itemD_scaled, itemH_scaled
+            );
+
+            const canFit = packer.getRotations(sampleItem).some(dims => 
+                dims[0] <= binW && dims[1] <= binD && dims[2] <= binH
+            );
+
+            if (!canFit) {
+                if(doLog) log(`Error: Item size (${itemW_unscaled.toFixed(1)}x${itemD_unscaled.toFixed(1)}x${itemH_unscaled.toFixed(1)} cm) cannot fit in pallet.`, true);
+                drawResults(null, binW_original_unscaled, binD_original_unscaled); // Draw empty pallet
+                return;
+            }
+
+            const binObj = new Bin("Pallet 1", binW, binD, binH);
+            packer.addBin(binObj);
+
+            if(doLog) log(`Packing ${itemW_unscaled.toFixed(1)}x${itemD_unscaled.toFixed(1)}x${itemH_unscaled.toFixed(1)}cm carton onto ${binW_original_unscaled}x${binD_original_unscaled}x${binH_usable_unscaled}cm pallet...`);
+            const start = performance.now();
+            const resultBins = packer.pack(sampleItem);
+            const end = performance.now();
+
+            const filledBin = resultBins[0];
+            const count = filledBin.items.length;
+            const usedVol = count * sampleItem.volume; 
+            const totalVol = binObj.volume;
+            const efficiency = totalVol > 0 ? (usedVol / totalVol * 100).toFixed(2) : "0.00";
+
+            // Update Stats
+            const totalProducts = count * itemsPerBestCarton;
+            document.getElementById('stats-overlay').classList.remove('hidden');
+            document.getElementById('stat-count').textContent = count;
+            document.getElementById('stat-total-products').textContent = totalProducts;
+            document.getElementById('stat-efficiency').textContent = efficiency + "%";
+            
+            if (doLog) {
+                log(`Calculation finished in ${(end - start).toFixed(2)}ms`);
+                log(`Packed ${count} cartons.`);
+                if (totalProducts > 0) {
+                     log(`Total products: ${count} cartons x ${itemsPerBestCarton} items = ${totalProducts} products.`);
+                }
+                const scale_vol_factor = Math.pow(SCALE_FACTOR, 3);
+                log(`Volume Utilization: ${(usedVol / scale_vol_factor).toFixed(0)} / ${(totalVol / scale_vol_factor).toFixed(0)} cm³ (${efficiency}%)`);
+            }
+            
+            // Draw 3D Pallet
+            drawResults(filledBin, binW_original_unscaled, binD_original_unscaled);
+
+            // Draw 3D Reference Carton (if we have data)
+            if (itemsPerBestCarton > 0 && lastBestResult) {
+                drawReferenceCarton(lastBestResult);
+            } else {
+                drawReferenceCarton(null); // Clear it if not
+            }
+        }
+
+        // --- Button Event Listeners ---
+        const packBtn = document.getElementById('pack-button');
+        const optBtn = document.getElementById('optimize-button');
+
+        packBtn.addEventListener('click', async () => {
+            packBtn.disabled = true;
+            optBtn.disabled = true;
+            packBtn.textContent = "Calculating...";
+            outputElement.innerHTML = "";
+            
+            // Clear optimization data for a manual run
+            itemsPerBestCarton = 0; 
+            lastBestResult = null;
+            
+            setTimeout(() => {
+                try {
+                    runSimulation(true); // Run with logging
+                } catch (e) {
+                    log("Critical Error: " + e.message, true);
+                    console.error(e);
+                }
+                packBtn.disabled = false;
+                optBtn.disabled = false;
+                packBtn.textContent = "Visualize Current Carton";
+            }, 50);
+        });
+
+        optBtn.addEventListener('click', async () => {
+            packBtn.disabled = true;
+            optBtn.disabled = true;
+            optBtn.textContent = "Optimizing...";
+            outputElement.innerHTML = "";
+            
+            // Clear old data before running
+            itemsPerBestCarton = 0;
+            lastBestResult = null; 
+            
+            setTimeout(async () => {
+                try {
+                    const success = await findOptimalCarton(); // This will populate lastBestResult
+                    if (success) {
+                        // Run visualization of the winning result
+                        runSimulation(true);
+                    }
+                } catch (e) {
+                    log("Critical Optimization Error: " + e.message, true);
+                    console.error(e);
+                }
+                packBtn.disabled = false;
+                optBtn.disabled = false;
+                optBtn.textContent = "Find Optimal Carton";
+            }, 50);
+        });
+
+        // Start Scene
+        init3D();
+        // Run a default optimization on load
+        setTimeout(() => { optBtn.click(); }, 100);
+        
+    </script>
+</body>
+</html>
